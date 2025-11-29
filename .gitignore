@@ -1,0 +1,18 @@
+# environment files
+.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# testing, build, IDE
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+
+# IDEs / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

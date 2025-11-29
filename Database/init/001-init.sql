@@ -1,0 +1,3 @@
+CREATE SCHEMA IF NOT EXISTS car_app AUTHORIZATION CURRENT_USER;
+
+ALTER ROLE car_user SET search_path TO car_app, public;
