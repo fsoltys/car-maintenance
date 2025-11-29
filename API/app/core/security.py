@@ -6,7 +6,10 @@ from passlib.context import CryptContext
 
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["pbkdf2_sha256"],
+    deprecated="auto",
+)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -22,7 +25,7 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
-    Tworzy JWT z polem 'sub' = identyfikator użytkownika (np. UUID jako string).
+    Tworzy JWT z polem 'sub' = identyfikator użytkownika
     """
     if expires_delta is None:
         expires_delta = timedelta(
