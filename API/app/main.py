@@ -1,27 +1,16 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import text
+from fastapi import FastAPI
 
-from app.api.deps import get_db
-from app.config import settings
-
+from app.api.meta.routes import router as meta_router
+from app.api.auth.routes import router as auth_router
+from app.api.users.routes import router as users_router
+# w przyszłości: from app.api.vehicles.routes import router as vehicles_router
 
 app = FastAPI(
     title="Car Maintenance API",
     version="0.1.0",
 )
 
-
-@app.get("/health")
-def health_check(db: Session = Depends(get_db)):
-    """
-    Prosty endpoint zdrowia:
-    - sprawdza połączenie z DB (SELECT 1)
-    - zwraca aktualne środowisko
-    """
-    db.execute(text("SELECT 1"))
-
-    return {
-        "status": "ok",
-        "environment": settings.environment,
-    }
+app.include_router(meta_router)
+app.include_router(auth_router)
+app.include_router(users_router)
+# app.include_router(vehicles_router)
