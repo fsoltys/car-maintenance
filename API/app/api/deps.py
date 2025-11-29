@@ -2,7 +2,7 @@ from collections.abc import Generator
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -11,8 +11,7 @@ from app.db.session import SessionLocal
 from app.core.security import decode_access_token
 from app.api.users.schemas import TokenPayload, UserOut
 
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+bearer_scheme = HTTPBearer()
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -24,32 +23,30 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def get_current_user_id(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> UUID:
     """
-    Zwraca UUID użytkownika wyciągnięty z JWT.
+    Pobiera token z nagłówka Authorization: Bearer <token>
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    token = credentials.credentials
 
     try:
         payload = decode_access_token(token)
         token_data = TokenPayload(**payload)
     except JWTError:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if token_data.sub is None:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing subject",
+        )
 
-    try:
-        user_id = UUID(token_data.sub)
-    except ValueError:
-        raise credentials_exception
-
-    return user_id
+    return UUID(token_data.sub)
 
 
 def get_current_user(
