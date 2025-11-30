@@ -3,10 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 from enum import Enum
-from pydantic import EmailStr
 
 
 
@@ -61,6 +60,7 @@ class VehicleOut(VehicleBase):
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
+
 class VehicleShareRole(str, Enum):
     EDITOR = "EDITOR"
     VIEWER = "VIEWER"
@@ -83,6 +83,7 @@ class VehicleShareCreate(BaseModel):
 class VehicleShareUpdate(BaseModel):
     role: VehicleShareRole
 
+
 class FuelType(str, Enum):
     PB95 = "PB95"
     PB98 = "PB98"
@@ -96,3 +97,43 @@ class FuelType(str, Enum):
 class VehicleFuelConfigItem(BaseModel):
     fuel: FuelType
     is_primary: bool = False
+
+
+class DrivingCycle(str, Enum):
+    CITY = "CITY"
+    HIGHWAY = "HIGHWAY"
+    MIX = "MIX"
+
+
+class FuelingBase(BaseModel):
+    filled_at: datetime
+    price_per_unit: float = Field(gt=0)
+    volume: float = Field(gt=0)
+    odometer_km: float = Field(gt=0)
+    full_tank: bool
+    driving_cycle: DrivingCycle | None = None
+    fuel: FuelType
+    note: str | None = None
+
+
+class FuelingCreate(FuelingBase):
+    """Payload tworzenia tankowania."""
+
+
+class FuelingUpdate(BaseModel):
+    """Partial update - wszystkie pola opcjonalne."""
+    filled_at: datetime | None = None
+    price_per_unit: float | None = Field(default=None, gt=0)
+    volume: float | None = Field(default=None, gt=0)
+    odometer_km: float | None = Field(default=None, gt=0)
+    full_tank: bool | None = None
+    driving_cycle: DrivingCycle | None = None
+    fuel: FuelType | None = None
+    note: str | None = None
+
+
+class FuelingOut(FuelingBase):
+    id: UUID
+    vehicle_id: UUID
+    user_id: UUID
+    created_at: datetime | None = None

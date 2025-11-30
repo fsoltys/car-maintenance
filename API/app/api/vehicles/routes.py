@@ -65,7 +65,7 @@ def create_vehicle(
     """
     Tworzy nowy pojazd przypisany do bieżącego użytkownika.
     """
-    vehicle_id = uuid4()
+    vehicle_id = UUID.uuid4()
     data = payload.model_dump()
 
     params = {
@@ -652,11 +652,6 @@ def replace_vehicle_fuels(
     except IntegrityError as exc:
         db.rollback()
         pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
-        constraint = getattr(
-            getattr(getattr(exc, "orig", None), "diag", None),
-            "constraint_name",
-            None,
-        )
 
         if pgcode == "23505":
             # unique violation – teoretycznie vehicle_id+fuel, ale my i tak nadpisujemy
