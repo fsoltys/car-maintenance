@@ -6,7 +6,7 @@ RUN set -eux; \
         build-essential \
         ca-certificates \
         git \
-        postgresql-server-dev-16 \
+        postgresql-server-dev-18 \
         wget \
     ; \
     git clone https://github.com/citusdata/pg_cron.git /tmp/pg_cron; \

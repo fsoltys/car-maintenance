@@ -158,7 +158,7 @@ BEGIN
         RETURN;
     END IF;
 
-    UPDATE documents SET
+    UPDATE documents d SET
         doc_type = COALESCE(p_doc_type::document_type, doc_type),
         number = COALESCE(p_number, number),
         provider = COALESCE(p_provider, provider),
@@ -166,7 +166,7 @@ BEGIN
         valid_from = COALESCE(p_valid_from, valid_from),
         valid_to = COALESCE(p_valid_to, valid_to),
         note = COALESCE(p_note, note)
-    WHERE id = p_document_id
+    WHERE d.id = p_document_id
     RETURNING * INTO v_row;
 
     RETURN QUERY SELECT v_row.id, v_row.vehicle_id, v_row.doc_type, v_row.number, v_row.provider, v_row.issue_date, v_row.valid_from, v_row.valid_to, v_row.note, v_row.created_at;
@@ -215,7 +215,7 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    DELETE FROM documents WHERE id = p_document_id;
+    DELETE FROM documents d WHERE d.id = p_document_id;
     GET DIAGNOSTICS v_deleted = ROW_COUNT;
 
     RETURN v_deleted > 0;

@@ -58,10 +58,10 @@ DECLARE
     v_target_user_id uuid;
 BEGIN
     -- sprawdzenie, czy actor jest właścicielem pojazdu
-    SELECT owner_id
+    SELECT v.owner_id
     INTO v_owner_id
-    FROM vehicles
-    WHERE id = p_vehicle_id;
+    FROM vehicles v
+    WHERE v.id = p_vehicle_id;
 
     IF v_owner_id IS NULL OR v_owner_id <> p_actor_id THEN
         RETURN;
@@ -137,10 +137,10 @@ DECLARE
     v_owner_id uuid;
     v_row      vehicle_shares%ROWTYPE;
 BEGIN
-    SELECT owner_id
+    SELECT v.owner_id
     INTO v_owner_id
-    FROM vehicles
-    WHERE id = p_vehicle_id;
+    FROM vehicles v
+    WHERE v.id = p_vehicle_id;
 
     IF v_owner_id IS NULL OR v_owner_id <> p_actor_id THEN
         RETURN;
@@ -193,10 +193,10 @@ DECLARE
     v_owner_id uuid;
     v_deleted  int;
 BEGIN
-    SELECT owner_id
+    SELECT v.owner_id
     INTO v_owner_id
-    FROM vehicles
-    WHERE id = p_vehicle_id;
+    FROM vehicles v
+    WHERE v.id = p_vehicle_id;
 
     IF v_owner_id IS NULL OR v_owner_id <> p_actor_id THEN
         RETURN FALSE;

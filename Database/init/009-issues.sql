@@ -165,7 +165,7 @@ BEGIN
         RETURN;
     END IF;
 
-    UPDATE issues SET
+    UPDATE issues i SET
         title = COALESCE(p_title, title),
         description = COALESCE(p_description, description),
         priority = COALESCE(p_priority::issue_priority, priority),
@@ -176,7 +176,7 @@ BEGIN
             WHEN p_status IS NOT NULL AND p_status::text = 'OPEN' THEN NULL
             ELSE closed_at
         END
-    WHERE id = p_issue_id
+    WHERE i.id = p_issue_id
     RETURNING * INTO v_row;
 
     RETURN QUERY SELECT v_row.id, v_row.vehicle_id, v_row.created_by, v_row.title, v_row.description, v_row.priority, v_row.status, v_row.created_at, v_row.closed_at, v_row.error_codes;
@@ -229,7 +229,7 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    DELETE FROM issues WHERE id = p_issue_id;
+    DELETE FROM issues i WHERE i.id = p_issue_id;
     GET DIAGNOSTICS v_deleted = ROW_COUNT;
 
     RETURN v_deleted > 0;

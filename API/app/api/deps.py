@@ -46,7 +46,13 @@ def get_current_user_id(
             detail="Token missing subject",
         )
 
-    return UUID(token_data.sub)
+    try:
+        return UUID(token_data.sub)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token subject",
+        )
 
 
 def get_current_user(

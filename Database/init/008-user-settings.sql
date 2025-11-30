@@ -21,8 +21,8 @@ DECLARE
 BEGIN
     SELECT *
     INTO v_row
-    FROM user_settings
-    WHERE user_id = p_user_id;
+    FROM user_settings us
+    WHERE us.user_id = p_user_id;
 
     -- Jeśli brak ustawień, tworzymy domyślne
     IF NOT FOUND THEN

@@ -175,13 +175,13 @@ BEGIN
         RETURN;
     END IF;
 
-    UPDATE expenses SET
+    UPDATE expenses e SET
         expense_date = COALESCE(p_expense_date, expense_date),
         category = COALESCE(p_category::expense_category, category),
         amount = COALESCE(p_amount, amount),
         vat_rate = COALESCE(p_vat_rate, vat_rate),
         note = COALESCE(p_note, note)
-    WHERE id = p_expense_id
+    WHERE e.id = p_expense_id
     RETURNING * INTO v_row;
 
     RETURN QUERY SELECT v_row.id, v_row.vehicle_id, v_row.user_id, v_row.expense_date, v_row.category, v_row.amount, v_row.vat_rate, v_row.note, v_row.created_at;
@@ -222,7 +222,7 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    DELETE FROM expenses WHERE id = p_expense_id;
+    DELETE FROM expenses e WHERE e.id = p_expense_id;
     GET DIAGNOSTICS v_deleted = ROW_COUNT;
 
     RETURN v_deleted > 0;
@@ -268,14 +268,14 @@ BEGIN
       AND (p_to IS NULL OR e.expense_date <= p_to);
 
     SELECT jsonb_agg(row_to_json(t)) INTO STRICT per_category
-    FROM (
-        SELECT category::text AS category, SUM(amount) AS total_amount, COUNT(*) AS cnt
-        FROM expenses
-        WHERE vehicle_id = p_vehicle_id
-          AND (p_from IS NULL OR expense_date >= p_from)
-          AND (p_to IS NULL OR expense_date <= p_to)
-        GROUP BY category
-    ) t;
+        FROM (
+                SELECT e.category::text AS category, SUM(e.amount) AS total_amount, COUNT(*) AS cnt
+                FROM expenses e
+                WHERE e.vehicle_id = p_vehicle_id
+                    AND (p_from IS NULL OR e.expense_date >= p_from)
+                    AND (p_to IS NULL OR e.expense_date <= p_to)
+                GROUP BY e.category
+        ) t;
 
     SELECT jsonb_agg(row_to_json(t)) INTO STRICT monthly_series
     FROM (
@@ -313,7 +313,6 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    PERFORM
     INSERT INTO expenses (id, vehicle_id, user_id, expense_date, category, amount, note, created_at)
     VALUES (gen_random_uuid(), NEW.vehicle_id, NEW.user_id, NEW.filled_at::date, 'FUEL'::expense_category, (NEW.price_per_unit * NEW.volume), NEW.note, now());
 
@@ -331,7 +330,6 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    PERFORM
     INSERT INTO expenses (id, vehicle_id, user_id, expense_date, category, amount, note, created_at)
     VALUES (gen_random_uuid(), NEW.vehicle_id, NEW.user_id, NEW.service_date, 'SERVICE'::expense_category, NEW.total_cost, NEW.note, now());
 

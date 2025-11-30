@@ -117,8 +117,8 @@ BEGIN
     END IF;
 
     -- 5) Podmiana konfiguracji
-    DELETE FROM vehicle_fuels
-    WHERE vehicle_id = p_vehicle_id;
+    DELETE FROM vehicle_fuels vf
+    WHERE vf.vehicle_id = p_vehicle_id;
 
     FOR v_item IN
         SELECT jsonb_array_elements(p_config)

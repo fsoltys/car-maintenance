@@ -25,13 +25,13 @@ services:
     build:
       context: ./docker/postgres
       dockerfile: Dockerfile
-    image: car-postgres-pgcron:16
+    image: car-postgres-pgcron:18
     container_name: car_db
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    command: ["postgres", "-c", "shared_preload_libraries=pg_cron"]
+    command: ["postgres", "-c", "shared_preload_libraries=pg_cron", "-c", "cron.database_name=${POSTGRES_DB}"]
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./Database/init:/docker-entrypoint-initdb.d:ro
