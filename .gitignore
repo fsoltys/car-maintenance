@@ -16,6 +16,7 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+*.iml
 
 # Flutter
 .flutter-plugins
@@ -23,10 +24,12 @@ Thumbs.db
 .packages
 .pub-cache/
 .pub/
-/Flutter-App/build/
-/Flutter-App/ios/
-/Flutter-App/android/
-/Flutter-App/web/
-/Flutter-App/linux/
-/Flutter-App/macos/
-/Flutter-App/windows/
+Flutter-App/.dart_tool/
+Flutter-App/build/
+Flutter-App/ios/
+Flutter-App/android/
+Flutter-App/web/
+Flutter-App/linux/
+Flutter-App/macos/
+Flutter-App/windows/
+Flutter-App/pubspec.lock
