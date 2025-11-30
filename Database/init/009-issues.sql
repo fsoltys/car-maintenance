@@ -129,14 +129,19 @@ DECLARE
     v_owner uuid;
     v_allowed boolean := false;
 BEGIN
-    SELECT i.*, v.owner_id INTO v_row, v_owner
+    SELECT i.*
+    INTO v_row
     FROM issues i
-    JOIN vehicles v ON v.id = i.vehicle_id
     WHERE i.id = p_issue_id;
 
     IF NOT FOUND THEN
         RETURN;
     END IF;
+
+    SELECT v.owner_id
+    INTO v_owner
+    FROM vehicles v
+    WHERE v.id = v_row.vehicle_id;
 
     v_vehicle_id := v_row.vehicle_id;
 
@@ -193,14 +198,20 @@ DECLARE
     v_deleted int;
     v_allowed boolean := false;
 BEGIN
-    SELECT i.*, v.owner_id INTO v_row, v_owner
+
+    SELECT i.*
+    INTO v_row
     FROM issues i
-    JOIN vehicles v ON v.id = i.vehicle_id
     WHERE i.id = p_issue_id;
 
     IF NOT FOUND THEN
         RETURN FALSE;
     END IF;
+
+    SELECT v.owner_id
+    INTO v_owner
+    FROM vehicles v
+    WHERE v.id = v_row.vehicle_id;
 
     v_vehicle_id := v_row.vehicle_id;
 

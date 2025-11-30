@@ -321,15 +321,20 @@ DECLARE
     v_owner_id   uuid;
     v_cfg_cnt    int;
 BEGIN
-    SELECT f.*, v.owner_id
-    INTO v_row, v_owner_id
+    SELECT f.*
+    INTO v_row
     FROM fuelings f
-    JOIN vehicles v ON v.id = f.vehicle_id
     WHERE f.id = p_fueling_id;
 
     IF NOT FOUND THEN
         RETURN;
     END IF;
+
+    -- get owner of the vehicle
+    SELECT v.owner_id
+    INTO v_owner_id
+    FROM vehicles v
+    WHERE v.id = v_row.vehicle_id;
 
     v_vehicle_id := v_row.vehicle_id;
 
