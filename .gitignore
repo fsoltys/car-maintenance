@@ -16,3 +16,17 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/Flutter-App/build/
+/Flutter-App/ios/
+/Flutter-App/android/
+/Flutter-App/web/
+/Flutter-App/linux/
+/Flutter-App/macos/
+/Flutter-App/windows/
