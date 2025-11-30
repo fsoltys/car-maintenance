@@ -33,7 +33,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     command: ["postgres", "-c", "shared_preload_libraries=pg_cron", "-c", "cron.database_name=${POSTGRES_DB}"]
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
       - ./Database/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
