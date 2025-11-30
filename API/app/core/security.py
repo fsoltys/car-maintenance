@@ -25,7 +25,7 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
-    Tworzy JWT z polem 'sub' = identyfikator użytkownika
+    Tworzy JWT z polem 'sub' = identyfikator użytkownika oraz 'type' = 'access'.
     """
     if expires_delta is None:
         expires_delta = timedelta(
@@ -34,6 +34,7 @@ def create_access_token(
 
     to_encode: dict[str, Any] = {
         "sub": str(subject),
+        "type": "access",
         "exp": datetime.now(timezone.utc) + expires_delta,
     }
 
@@ -45,12 +46,47 @@ def create_access_token(
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> dict[str, Any]:
+def create_refresh_token(
+    subject: str | int,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
     """
-    Dekoduje i weryfikuje JWT, rzuca JWTError przy problemach.
+    Tworzy JWT z polem 'sub' = identyfikator użytkownika oraz 'type' = 'refresh'.
+    Refresh token ma domyślnie dłuższy czas życia.
+    """
+    if expires_delta is None:
+        expires_delta = timedelta(
+            days=settings.jwt_refresh_token_expire_days
+        )
+
+    to_encode: dict[str, Any] = {
+        "sub": str(subject),
+        "type": "refresh",
+        "exp": datetime.now(timezone.utc) + expires_delta,
+    }
+
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+    return encoded_jwt
+
+
+def decode_token(token: str) -> dict[str, Any]:
+    """
+    Dekoduje i weryfikuje dowolny JWT (access lub refresh),
+    rzuca JWTError / ExpiredSignatureError przy problemach.
     """
     return jwt.decode(
         token,
         settings.jwt_secret_key,
         algorithms=[settings.jwt_algorithm],
     )
+
+
+def decode_access_token(token: str) -> dict[str, Any]:
+    """
+    Zachowane dla kompatybilności - alias do decode_token().
+    """
+    return decode_token(token)
