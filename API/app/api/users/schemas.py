@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
+from enum import Enum
 
 
 class UserBase(BaseModel):
@@ -31,10 +32,27 @@ class UserOut(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None
 
 
 class TokenPayload(BaseModel):
-    """
-    Reprezentacja payloadu z JWT.
-    """
-    sub: str | None = None
+    sub: UUID
+    exp: int
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class UnitSystem(str, Enum):
+    METRIC = "METRIC"
+    IMPERIAL = "IMPERIAL"
+
+class UserSettingsOut(BaseModel):
+    unit_pref: UnitSystem
+    currency: str | None = Field(default=None, max_length=3, min_length=3)
+    timezone: str | None = None
+
+
+class UserSettingsUpdate(BaseModel):
+    unit_pref: UnitSystem
+    currency: str | None = Field(default=None, max_length=3, min_length=3)
+    timezone: str | None = None
