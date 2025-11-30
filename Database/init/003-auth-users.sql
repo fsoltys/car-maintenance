@@ -91,3 +91,74 @@ AS $$
     FROM users u
     WHERE u.id = p_user_id
 $$;
+
+SET search_path TO car_app, public;
+
+
+-- 4) Aktualizacja profilu użytkownika (display_name)
+
+
+CREATE OR REPLACE FUNCTION car_app.fn_update_user_profile(
+    p_user_id       uuid,
+    p_display_name  text
+)
+RETURNS TABLE (
+    id           uuid,
+    email        varchar(255),
+    display_name varchar(120),
+    created_at   timestamptz,
+    updated_at   timestamptz
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_row users%ROWTYPE;
+BEGIN
+    UPDATE users u
+    SET
+        display_name = p_display_name,
+        updated_at   = now()
+    WHERE u.id = p_user_id
+    RETURNING * INTO v_row;
+
+    IF NOT FOUND THEN
+        -- użytkownik nie istnieje
+        RETURN;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        v_row.id,
+        v_row.email,
+        v_row.display_name,
+        v_row.created_at,
+        v_row.updated_at;
+END;
+$$;
+
+
+-- 5) Aktualizacja hasła użytkownika
+
+
+CREATE OR REPLACE FUNCTION car_app.fn_update_user_password(
+    p_user_id       uuid,
+    p_password_hash text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_affected int;
+BEGIN
+    UPDATE users u
+    SET
+        password_hash = p_password_hash,
+        updated_at    = now()
+    WHERE u.id = p_user_id;
+
+    GET DIAGNOSTICS v_affected = ROW_COUNT;
+
+    RETURN v_affected > 0;
+END;
+$$;
+

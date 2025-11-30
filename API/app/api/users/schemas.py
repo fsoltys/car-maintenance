@@ -56,3 +56,11 @@ class UserSettingsUpdate(BaseModel):
     unit_pref: UnitSystem
     currency: str | None = Field(default=None, max_length=3, min_length=3)
     timezone: str | None = None
+
+class UserProfileUpdate(BaseModel):
+    display_name: str | None = Field(default=None, max_length=120)
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
