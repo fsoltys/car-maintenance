@@ -91,12 +91,12 @@ BEGIN
     END IF;
 
     -- upsert udziału
-    INSERT INTO vehicle_shares (vehicle_id, user_id, role, invited_at)
-    VALUES (p_vehicle_id, v_target_user_id, p_role, now())
-    ON CONFLICT (vehicle_id, user_id)
-    DO UPDATE SET
-        role = EXCLUDED.role
-    ;
+    EXECUTE '
+        INSERT INTO vehicle_shares (vehicle_id, user_id, role, invited_at)
+        VALUES ($1, $2, $3, now())
+        ON CONFLICT (vehicle_id, user_id) DO UPDATE SET role = EXCLUDED.role
+    '
+    USING p_vehicle_id, v_target_user_id, p_role;
 
     -- zwracamy aktualny stan udziału
     RETURN QUERY

@@ -26,23 +26,13 @@ BEGIN
 
     -- Jeśli brak ustawień, tworzymy domyślne
     IF NOT FOUND THEN
-        INSERT INTO user_settings (
-            user_id,
-            unit_pref,
-            currency,
-            timezone,
-            created_at,
-            updated_at
-        )
-        VALUES (
-            p_user_id,
-            'METRIC',
-            NULL,
-            NULL,
-            now(),
-            now()
-        )
-        RETURNING *
+        -- Use EXECUTE with USING to avoid ambiguous reference to `user_id`
+        EXECUTE '
+            INSERT INTO user_settings (
+                user_id, unit_pref, currency, timezone, created_at, updated_at
+            ) VALUES ($1, $2::unit_system, $3::char(3), $4, now(), now())
+            RETURNING *'
+        USING p_user_id, 'METRIC', NULL, NULL
         INTO v_row;
     END IF;
 
@@ -113,29 +103,17 @@ BEGIN
         v_timezone := btrim(p_timezone);
     END IF;
 
-    INSERT INTO user_settings (
-        user_id,
-        unit_pref,
-        currency,
-        timezone,
-        created_at,
-        updated_at
-    )
-    VALUES (
-        p_user_id,
-        v_unit_pref,
-        v_currency,
-        v_timezone,
-        now(),
-        now()
-    )
-    ON CONFLICT (user_id)
-    DO UPDATE SET
-        unit_pref  = EXCLUDED.unit_pref,
-        currency   = EXCLUDED.currency,
-        timezone   = EXCLUDED.timezone,
-        updated_at = now()
-    RETURNING *
+    EXECUTE '
+        INSERT INTO user_settings (
+            user_id, unit_pref, currency, timezone, created_at, updated_at
+        ) VALUES ($1, $2::unit_system, $3::char(3), $4, now(), now())
+        ON CONFLICT (user_id) DO UPDATE SET
+            unit_pref = EXCLUDED.unit_pref,
+            currency = EXCLUDED.currency,
+            timezone = EXCLUDED.timezone,
+            updated_at = now()
+        RETURNING *'
+    USING p_user_id, v_unit_pref, v_currency, v_timezone
     INTO v_row;
 
     RETURN QUERY
