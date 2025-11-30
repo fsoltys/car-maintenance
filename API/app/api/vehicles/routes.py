@@ -4,6 +4,7 @@ from typing import List
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import DBAPIError, IntegrityError, DataError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -29,10 +30,21 @@ def list_vehicles(
     """
     Lista pojazdów zalogowanego użytkownika (owner + shared).
     """
-    rows = db.execute(
-        text("SELECT * FROM fn_get_user_vehicles(:user_id)"),
-        {"user_id": current_user_id},
-    ).mappings().all()
+    try:
+        rows = db.execute(
+            text("SELECT * FROM fn_get_user_vehicles(:user_id)"),
+            {"user_id": current_user_id},
+        ).mappings().all()
+    except DBAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while listing vehicles.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
+        ) from exc
 
     return [VehicleOut.model_validate(row) for row in rows]
 
@@ -97,13 +109,29 @@ def create_vehicle(
             params,
         ).mappings().first()
         db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        constraint = getattr(getattr(getattr(exc, "orig", None), "diag", None), "constraint_name", None)
+        if pgcode == "23505":
+            # unique violation — spróbuj dopasować do pola
+            if constraint and "vin" in constraint.lower():
+                detail = "VIN already exists."
+            elif constraint and ("plate" in constraint.lower() or "licence" in constraint.lower()):
+                detail = "Plate number already exists."
+            else:
+                detail = "Unique constraint violation."
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid data or constraint violation.") from exc
+    except DataError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.") from exc
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Database error while creating vehicle.") from exc
     except Exception as exc:
         db.rollback()
-        # TODO (optional): bardziej szczegółowe błędy (np. unikalność VIN/plate)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not create vehicle",
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected server error.") from exc
 
     if row is None:
         raise HTTPException(
@@ -180,32 +208,61 @@ def update_vehicle(
         "last_inspection_date": base.get("last_inspection_date"),
     }
 
-    row = db.execute(
-        text(
-            """
-            SELECT * FROM fn_update_vehicle(
-                :user_id,
-                :vehicle_id,
-                :name,
-                :description,
-                :vin,
-                :plate,
-                :policy_number,
-                :model,
-                :production_year,
-                :tank_capacity_l,
-                :battery_capacity_kwh,
-                :initial_odometer_km,
-                :purchase_price,
-                :purchase_date,
-                :last_inspection_date
-            )
-            """
-        ),
-        params,
-    ).mappings().first()
-
-    db.commit()
+    try:
+        row = db.execute(
+            text(
+                """
+                SELECT * FROM fn_update_vehicle(
+                    :user_id,
+                    :vehicle_id,
+                    :name,
+                    :description,
+                    :vin,
+                    :plate,
+                    :policy_number,
+                    :model,
+                    :production_year,
+                    :tank_capacity_l,
+                    :battery_capacity_kwh,
+                    :initial_odometer_km,
+                    :purchase_price,
+                    :purchase_date,
+                    :last_inspection_date
+                )
+                """
+            ),
+            params,
+        ).mappings().first()
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        constraint = getattr(getattr(getattr(exc, "orig", None), "diag", None), "constraint_name", None)
+        if pgcode == "23505":
+            # unique violation
+            if constraint and "vin" in constraint.lower():
+                detail = "VIN already exists."
+            elif constraint and ("plate" in constraint.lower() or "licence" in constraint.lower()):
+                detail = "Plate number already exists."
+            else:
+                detail = "Unique constraint violation."
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
+        if pgcode in ("23502", "23514", "23503"):
+            # not null / check / foreign key violations
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid data or constraint violation.") from exc
+        if pgcode == "40001":
+            # serialization failure — transient
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Transaction conflict, please retry.") from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid data or constraint violation.") from exc
+    except DataError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.") from exc
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Database error while updating vehicle.") from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected server error.") from exc
 
     if row is None:
         # ktoś usunął / zmienił ownera między SELECT a UPDATE
@@ -229,12 +286,36 @@ def delete_vehicle(
     """
     Usuwa pojazd użytkownika (twarde DELETE).
     """
-    result = db.execute(
-        text("SELECT fn_delete_vehicle(:user_id, :vehicle_id) AS deleted"),
-        {"user_id": current_user_id, "vehicle_id": vehicle_id},
-    ).mappings().first()
-
-    db.commit()
+    try:
+        result = db.execute(
+            text("SELECT fn_delete_vehicle(:user_id, :vehicle_id) AS deleted"),
+            {"user_id": current_user_id, "vehicle_id": vehicle_id},
+        ).mappings().first()
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        if pgcode == "23503":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot delete vehicle because related records exist.",
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Constraint violation while deleting vehicle.",
+        ) from exc
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while deleting vehicle.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
+        ) from exc
 
     if not result or not result["deleted"]:
         raise HTTPException(
@@ -257,10 +338,23 @@ def list_vehicle_shares(
     Lista użytkowników współdzielących pojazd.
     Tylko OWNER danego pojazdu może ją zobaczyć.
     """
-    rows = db.execute(
-        text("SELECT * FROM fn_get_vehicle_shares(:actor_id, :vehicle_id)"),
-        {"actor_id": current_user_id, "vehicle_id": vehicle_id},
-    ).mappings().all()
+    try:
+        rows = db.execute(
+            text("SELECT * FROM fn_get_vehicle_shares(:actor_id, :vehicle_id)"),
+            {"actor_id": current_user_id, "vehicle_id": vehicle_id},
+        ).mappings().all()
+    except DBAPIError as exc:
+        # Database-level error
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while listing vehicle shares.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
+        ) from exc
 
     if not rows:
         # brak dostępu albo brak pojazdu – celowo 404
@@ -307,11 +401,36 @@ def add_or_update_vehicle_share(
             },
         ).mappings().first()
         db.commit()
-    except Exception as exc:
+    except IntegrityError as exc:
+        db.rollback()
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        # unique violation
+        if pgcode == "23505":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Resource already exists or duplicate value.",
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Constraint violation while adding/updating share.",
+        ) from exc
+    except DataError as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not add or update vehicle share",
+            detail="Invalid input data.",
+        ) from exc
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while adding/updating share.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
         ) from exc
 
     if row is None:
@@ -338,26 +457,44 @@ def update_vehicle_share_role(
     Zmiana roli współdzielącego (VIEWER <-> EDITOR).
     Tylko OWNER pojazdu.
     """
-    row = db.execute(
-        text(
-            """
-            SELECT * FROM fn_update_vehicle_share_role(
-                :actor_id,
-                :vehicle_id,
-                :target_user_id,
-                :role
-            )
-            """
-        ),
-        {
-            "actor_id": current_user_id,
-            "vehicle_id": vehicle_id,
-            "target_user_id": user_id,
-            "role": payload.role.value,
-        },
-    ).mappings().first()
-
-    db.commit()
+    try:
+        row = db.execute(
+            text(
+                """
+                SELECT * FROM fn_update_vehicle_share_role(
+                    :actor_id,
+                    :vehicle_id,
+                    :target_user_id,
+                    :role
+                )
+                """
+            ),
+            {
+                "actor_id": current_user_id,
+                "vehicle_id": vehicle_id,
+                "target_user_id": user_id,
+                "role": payload.role.value,
+            },
+        ).mappings().first()
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        if pgcode == "23505":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Duplicate value or unique constraint violation.",
+            ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Constraint violation.") from exc
+    except DataError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.") from exc
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Database error while updating share.") from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected server error.") from exc
 
     if row is None:
         raise HTTPException(
@@ -382,18 +519,31 @@ def remove_vehicle_share(
     Usunięcie użytkownika z współdzielenia.
     Tylko OWNER pojazdu.
     """
-    result = db.execute(
-        text(
-            "SELECT fn_remove_vehicle_share(:actor_id, :vehicle_id, :target_user_id) AS deleted"
-        ),
-        {
-            "actor_id": current_user_id,
-            "vehicle_id": vehicle_id,
-            "target_user_id": user_id,
-        },
-    ).mappings().first()
-
-    db.commit()
+    try:
+        result = db.execute(
+            text(
+                "SELECT fn_remove_vehicle_share(:actor_id, :vehicle_id, :target_user_id) AS deleted"
+            ),
+            {
+                "actor_id": current_user_id,
+                "vehicle_id": vehicle_id,
+                "target_user_id": user_id,
+            },
+        ).mappings().first()
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        if pgcode == "23503":
+            # foreign key violation or related records preventing delete
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot remove share because related records exist.") from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Constraint violation while removing share.") from exc
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Database error while removing share.") from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected server error.") from exc
 
     if not result or not result["deleted"]:
         raise HTTPException(

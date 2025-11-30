@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, DBAPIError
 
 from app.api.deps import get_db
 from app.api.users.schemas import UserCreate, UserOut, Token
@@ -49,12 +50,32 @@ def register_user(
             },
         )
         db.commit()
-    except Exception as exc:
+    except IntegrityError as exc:
         db.rollback()
-        # na razie traktuje wszystkie błędy jako duplikat emaila
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        if pgcode == "23505":
+            # duplicate key / unique violation 
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is already registered.",
+            ) from exc
+        # inne naruszenia integralności danych
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not register user (possibly email already registered).",
+            detail="Invalid data or constraint violation.",
+        ) from exc
+    except DBAPIError as exc:
+        db.rollback()
+        # DBAPIError 
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error during user registration.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
         ) from exc
 
     # pobranie danych użytkownika do zwrotki
@@ -81,15 +102,26 @@ def login(
     """
     Logowanie użytkownika.
     """
-    row = db.execute(
-        text("SELECT * FROM fn_get_user_for_login(:email)"),
-        {"email": form_data.username},
-    ).mappings().first()
+    try:
+        row = db.execute(
+            text("SELECT * FROM fn_get_user_for_login(:email)"),
+            {"email": form_data.username},
+        ).mappings().first()
+    except DBAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error during login.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
+        ) from exc
 
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="The user with the given email does not exist",
         )
 
     password_hash: str = row["password_hash"]
@@ -97,7 +129,7 @@ def login(
     if not verify_password(form_data.password, password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect password",
         )
 
     user_id = row["id"]
