@@ -27,7 +27,11 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron') THEN
         CREATE EXTENSION IF NOT EXISTS pg_cron;
-        PERFORM cron.schedule('daily_refresh_mv_expenses_monthly', '0 3 * * *', $$SELECT car_app.fn_refresh_mv_expenses_monthly()$$);
+        PERFORM cron.schedule(
+            'daily_refresh_mv_expenses_monthly',
+            '0 3 * * *',
+            $SQL$SELECT car_app.fn_refresh_mv_expenses_monthly();$SQL$
+        );
     END IF;
 END;
 $$;
