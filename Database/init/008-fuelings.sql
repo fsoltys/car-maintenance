@@ -56,6 +56,66 @@ BEGIN
 END;
 $$;
 
+-- 1a) Lista tankowań dla pojazdu w zakresie dat (OWNER + shares: VIEWER/EDITOR)
+
+CREATE OR REPLACE FUNCTION car_app.fn_get_vehicle_fuelings_range(
+    p_user_id    uuid,
+    p_vehicle_id uuid,
+    p_from       timestamptz,
+    p_to         timestamptz
+)
+RETURNS TABLE (
+    id              uuid,
+    vehicle_id      uuid,
+    user_id         uuid,
+    filled_at       timestamptz,
+    price_per_unit  numeric(10,3),
+    volume          numeric(10,3),
+    odometer_km     numeric(10,1),
+    full_tank       boolean,
+    driving_cycle   driving_cycle,
+    fuel            fuel_type,
+    note            text,
+    created_at      timestamptz
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- sprawdzenie dostępu do pojazdu (OWNER + dowolny share)
+    IF NOT EXISTS (
+        SELECT 1
+        FROM vehicles v
+        LEFT JOIN vehicle_shares s
+          ON s.vehicle_id = v.id
+         AND s.user_id = p_user_id
+        WHERE v.id = p_vehicle_id
+          AND (v.owner_id = p_user_id OR s.user_id IS NOT NULL)
+    ) THEN
+        RETURN;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        f.id,
+        f.vehicle_id,
+        f.user_id,
+        f.filled_at,
+        f.price_per_unit,
+        f.volume,
+        f.odometer_km,
+        f.full_tank,
+        f.driving_cycle,
+        f.fuel,
+        f.note,
+        f.created_at
+    FROM fuelings f
+    WHERE f.vehicle_id = p_vehicle_id
+      AND (p_from IS NULL OR f.filled_at >= p_from)
+      AND (p_to   IS NULL OR f.filled_at <= p_to)
+    ORDER BY f.filled_at DESC, f.created_at DESC;
+END;
+$$;
+
 -- 2) Pojedyncze tankowanie (OWNER + shares: VIEWER/EDITOR)
 
 CREATE OR REPLACE FUNCTION car_app.fn_get_fueling(

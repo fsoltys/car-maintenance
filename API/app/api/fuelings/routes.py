@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List
 from uuid import UUID
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
@@ -26,13 +27,19 @@ router = APIRouter(prefix="/fuelings", tags=["fuelings"])
 )
 def list_fuelings_for_vehicle(
     vehicle_id: UUID,
+    from_datetime: datetime | None = None,
+    to_datetime: datetime | None = None,
     db: Session = Depends(get_db),
     current_user_id: UUID = Depends(get_current_user_id),
 ) -> list[FuelingOut]:
     """
     Lista tankowań dla pojazdu.
+
+    Opcjonalne parametry zapytania:
+    - from_datetime: początek zakresu (filled_at >= from_datetime)
+    - to_datetime:   koniec zakresu   (filled_at <= to_datetime)
     """
-    # Sprawdzenie dostępu do pojazdu
+
     existing = db.execute(
         text("SELECT * FROM car_app.fn_get_vehicle(:user_id, :vehicle_id)"),
         {"user_id": current_user_id, "vehicle_id": vehicle_id},
@@ -44,19 +51,110 @@ def list_fuelings_for_vehicle(
             detail="Vehicle not found or no permission",
         )
 
-    rows = db.execute(
-        text(
-            """
-            SELECT * FROM car_app.fn_get_vehicle_fuelings(
-                :user_id,
-                :vehicle_id
-            )
-            """
-        ),
-        {"user_id": current_user_id, "vehicle_id": vehicle_id},
-    ).mappings().all()
+    try:
+        if from_datetime is None and to_datetime is None:
+            # bez zakresu dat
+            rows = db.execute(
+                text(
+                    """
+                    SELECT * FROM car_app.fn_get_vehicle_fuelings(
+                        :user_id,
+                        :vehicle_id
+                    )
+                    """
+                ),
+                {
+                    "user_id": current_user_id,
+                    "vehicle_id": vehicle_id,
+                },
+            ).mappings().all()
+        else:
+            # z zakresem dat
+            rows = db.execute(
+                text(
+                    """
+                    SELECT * FROM car_app.fn_get_vehicle_fuelings_range(
+                        :user_id,
+                        :vehicle_id,
+                        :from_ts,
+                        :to_ts
+                    )
+                    """
+                ),
+                {
+                    "user_id": current_user_id,
+                    "vehicle_id": vehicle_id,
+                    "from_ts": from_datetime,
+                    "to_ts": to_datetime,
+                },
+            ).mappings().all()
+    except DataError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date range.",
+        ) from exc
+    except DBAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while fetching fuelings.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
+        ) from exc
 
     return [FuelingOut.model_validate(row) for row in rows]
+
+
+@router.get("/fuelings/{fueling_id}", response_model=FuelingOut)
+def get_fueling(
+    fueling_id: UUID,
+    db: Session = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id),
+) -> FuelingOut:
+    """
+    Zwraca pojedyncze tankowanie, jeśli użytkownik ma dostęp do pojazdu
+    (OWNER / VIEWER / EDITOR).
+    """
+    try:
+        row = db.execute(
+            text(
+                """
+                SELECT * FROM car_app.fn_get_fueling(
+                    :user_id,
+                    :fueling_id
+                )
+                """
+            ),
+            {
+                "user_id": current_user_id,
+                "fueling_id": fueling_id,
+            },
+        ).mappings().first()
+    except DataError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid fueling identifier.",
+        ) from exc
+    except DBAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while fetching fueling.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
+        ) from exc
+
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fueling not found or no permission.",
+        )
+
+    return FuelingOut.model_validate(row)
 
 
 @router.post(
