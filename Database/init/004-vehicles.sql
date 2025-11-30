@@ -112,20 +112,20 @@ $$;
 
 -- 3) Utworzenie pojazdu (tylko owner)
 
-CREATE OR REPLACE FUNCTION fn_create_vehicle(
+CREATE OR REPLACE FUNCTION car_app.fn_create_vehicle(
     p_vehicle_id            uuid,
     p_owner_id              uuid,
-    p_name                  varchar,
+    p_name                  text,
     p_description           text DEFAULT NULL,
-    p_vin                   varchar DEFAULT NULL,
-    p_plate                 varchar DEFAULT NULL,
-    p_policy_number         varchar DEFAULT NULL,
-    p_model                 varchar DEFAULT NULL,
+    p_vin                   text DEFAULT NULL,
+    p_plate                 text DEFAULT NULL,
+    p_policy_number         text DEFAULT NULL,
+    p_model                 text DEFAULT NULL,
     p_production_year       integer DEFAULT NULL,
-    p_tank_capacity_l       numeric(8,2) DEFAULT NULL,
-    p_battery_capacity_kwh  numeric(8,2) DEFAULT NULL,
-    p_initial_odometer_km   numeric(10,1) DEFAULT NULL,
-    p_purchase_price        numeric(12,2) DEFAULT NULL,
+    p_tank_capacity_l       double precision DEFAULT NULL,
+    p_battery_capacity_kwh  double precision DEFAULT NULL,
+    p_initial_odometer_km   double precision DEFAULT NULL,
+    p_purchase_price        double precision DEFAULT NULL,
     p_purchase_date         date DEFAULT NULL,
     p_last_inspection_date  date DEFAULT NULL
 )
@@ -218,20 +218,20 @@ $$;
 -- 4) Aktualizacja pojazdu
 --    OWNER lub EDITOR (VIEWER tylko read)
 
-CREATE OR REPLACE FUNCTION fn_update_vehicle(
+CREATE OR REPLACE FUNCTION car_app.fn_update_vehicle(
     p_user_id               uuid,
     p_vehicle_id            uuid,
-    p_name                  varchar,
+    p_name                  text,
     p_description           text,
-    p_vin                   varchar,
-    p_plate                 varchar,
-    p_policy_number         varchar,
-    p_model                 varchar,
+    p_vin                   text,
+    p_plate                 text,
+    p_policy_number         text,
+    p_model                 text,
     p_production_year       integer,
-    p_tank_capacity_l       numeric(8,2),
-    p_battery_capacity_kwh  numeric(8,2),
-    p_initial_odometer_km   numeric(10,1),
-    p_purchase_price        numeric(12,2),
+    p_tank_capacity_l       double precision,
+    p_battery_capacity_kwh  double precision,
+    p_initial_odometer_km   double precision,
+    p_purchase_price        double precision,
     p_purchase_date         date,
     p_last_inspection_date  date
 )
@@ -257,8 +257,32 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_row vehicles%ROWTYPE;
+    v_row     vehicles%ROWTYPE;
+    v_owner_id uuid;
 BEGIN
+    -- sprawdzamy, czy user ma prawo edytować (OWNER lub EDITOR)
+    SELECT v.owner_id
+    INTO v_owner_id
+    FROM vehicles v
+    WHERE v.id = p_vehicle_id;
+
+    IF v_owner_id IS NULL THEN
+
+        RETURN;
+    END IF;
+
+    IF v_owner_id <> p_user_id THEN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM vehicle_shares s
+            WHERE s.vehicle_id = p_vehicle_id
+              AND s.user_id = p_user_id
+              AND s.role IN ('OWNER','EDITOR')
+        ) THEN
+            RETURN;
+        END IF;
+    END IF;
+
     UPDATE vehicles v
     SET
         name                  = p_name,
@@ -276,16 +300,6 @@ BEGIN
         last_inspection_date  = p_last_inspection_date,
         updated_at            = now()
     WHERE v.id = p_vehicle_id
-      AND (
-            v.owner_id = p_user_id
-         OR EXISTS (
-                SELECT 1
-                FROM vehicle_shares s
-                WHERE s.vehicle_id = v.id
-                  AND s.user_id = p_user_id
-                  AND s.role IN ('OWNER','EDITOR')
-            )
-      )
     RETURNING * INTO v_row;
 
     IF NOT FOUND THEN

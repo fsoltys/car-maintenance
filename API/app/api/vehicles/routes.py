@@ -75,7 +75,7 @@ def create_vehicle(
         row = db.execute(
             text(
                 """
-                SELECT * FROM fn_create_vehicle(
+                SELECT * FROM car_app.fn_create_vehicle(
                     :vehicle_id,
                     :owner_id,
                     :name,
