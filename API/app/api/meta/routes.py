@@ -33,3 +33,24 @@ def version():
         "version": "0.1.0",
         "description": "API meta information"
     }
+
+@router.get("/enums")
+def get_enums(db: Session = Depends(get_db)):
+    """
+    Zwraca słowniki enumów z bazy danych, do użycia np. w dropdownach na froncie.
+
+    Struktura odpowiedzi:
+    {
+      "fuel_type": [
+        {"value": "PB95", "label": "PB95"},
+        ...
+      ],
+      "service_type": [...],
+      ...
+    }
+    """
+    row = db.execute(
+        text("SELECT car_app.fn_get_enums() AS enums")
+    ).mappings().first()
+
+    return row["enums"]
