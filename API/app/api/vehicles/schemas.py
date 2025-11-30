@@ -82,3 +82,17 @@ class VehicleShareCreate(BaseModel):
 
 class VehicleShareUpdate(BaseModel):
     role: VehicleShareRole
+
+class FuelType(str, Enum):
+    PB95 = "PB95"
+    PB98 = "PB98"
+    ON = "ON"
+    LPG = "LPG"
+    CNG = "CNG"
+    EV = "EV"
+    H2 = "H2"
+
+
+class VehicleFuelConfigItem(BaseModel):
+    fuel: FuelType
+    is_primary: bool = False
