@@ -6,6 +6,7 @@ import 'widgets/vehicle_card.dart';
 import 'add_vehicle_screen.dart';
 import 'edit_vehicle_screen.dart';
 import 'vehicle_role_settings_screen.dart';
+import 'vehicle_dashboard_screen.dart';
 import '../profile/profile_screen.dart';
 
 class VehicleListScreen extends StatefulWidget {
@@ -270,7 +271,12 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
                     child: VehicleCard(
                       vehicle: vehicle,
                       onTap: () {
-                        // TODO: Navigate to vehicle detail screen
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                VehicleDashboardScreen(vehicle: vehicle),
+                          ),
+                        );
                       },
                       onManageRoles: () async {
                         await Navigator.of(context).push(
@@ -315,7 +321,12 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
                     child: VehicleCard(
                       vehicle: vehicle,
                       onTap: () {
-                        // TODO: Navigate to vehicle detail screen
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                VehicleDashboardScreen(vehicle: vehicle),
+                          ),
+                        );
                       },
                       onEdit: () async {
                         final result = await Navigator.of(context).push(
@@ -352,7 +363,12 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
                     child: VehicleCard(
                       vehicle: vehicle,
                       onTap: () {
-                        // TODO: Navigate to vehicle detail screen
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                VehicleDashboardScreen(vehicle: vehicle),
+                          ),
+                        );
                       },
                       // No edit or delete buttons for viewers
                     ),

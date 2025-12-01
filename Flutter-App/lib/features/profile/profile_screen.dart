@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../core/api/user_service.dart';
+import '../../core/api/api_client.dart';
 import '../../core/auth/auth_storage.dart';
 import '../auth/login_screen.dart';
 
@@ -12,7 +13,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final UserService _userService = UserService();
+  final ApiClient _apiClient = ApiClient();
+  late final UserService _userService;
   final AuthStorage _authStorage = AuthStorage();
   final _displayNameFormKey = GlobalKey<FormState>();
   final _passwordFormKey = GlobalKey<FormState>();
@@ -34,6 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _userService = UserService(apiClient: _apiClient);
     _loadUserProfile();
   }
 

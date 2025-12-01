@@ -1,11 +1,18 @@
 import 'auth_storage.dart';
 import '../api/auth_service.dart';
 import '../api/user_service.dart';
+import '../api/api_client.dart';
 
 class SessionManager {
   final AuthStorage _storage = AuthStorage();
   final AuthService _authService = AuthService();
-  final UserService _userService = UserService();
+  late final UserService _userService;
+  late final ApiClient _apiClient;
+
+  SessionManager() {
+    _apiClient = ApiClient();
+    _userService = UserService(apiClient: _apiClient);
+  }
 
   Future<void> login(String email, String password) async {
     final response = await _authService.login(email, password);

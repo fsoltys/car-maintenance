@@ -3,7 +3,7 @@ import 'api_client.dart';
 class UserService {
   final ApiClient _apiClient;
 
-  UserService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  UserService({required ApiClient apiClient}) : _apiClient = apiClient;
 
   /// Get current user profile
   Future<UserProfile> getMyProfile() async {

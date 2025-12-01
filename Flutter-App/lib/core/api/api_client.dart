@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_storage.dart';
-import '../auth/session_manager.dart';
 import '../auth/auth_events.dart';
+import 'auth_service.dart';
 
 class ApiClient {
   // Use 10.0.2.2 for Android emulator, localhost for iOS simulator
   static const String baseUrl = 'http://10.0.2.2:8000';
   final AuthStorage _authStorage = AuthStorage();
-  final SessionManager _sessionManager = SessionManager();
+  final AuthService _authService = AuthService();
   final AuthEvents _authEvents = AuthEvents();
 
   Future<Map<String, String>> _buildHeaders({
@@ -31,7 +31,17 @@ class ApiClient {
   /// Returns true if refresh was successful, false if user needs to re-login
   Future<bool> _handleUnauthorized() async {
     try {
-      await _sessionManager.refreshAccessToken();
+      final refreshToken = await _authStorage.getRefreshToken();
+      if (refreshToken == null) {
+        throw Exception('No refresh token available');
+      }
+
+      final newTokens = await _authService.refreshToken(refreshToken);
+
+      await _authStorage.saveTokens(
+        accessToken: newTokens.accessToken,
+        refreshToken: newTokens.refreshToken,
+      );
       return true;
     } catch (e) {
       // Refresh failed, clear all auth data and emit session expired event
