@@ -7,6 +7,7 @@ class VehicleCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onManageRoles;
 
   const VehicleCard({
     super.key,
@@ -14,6 +15,7 @@ class VehicleCard extends StatelessWidget {
     required this.onTap,
     this.onEdit,
     this.onDelete,
+    this.onManageRoles,
   });
 
   @override
@@ -80,9 +82,36 @@ class VehicleCard extends StatelessWidget {
                         ),
                       ),
                       // Action buttons (only show if user has edit/delete permissions)
-                      if (onEdit != null || onDelete != null)
+                      if (onEdit != null ||
+                          onDelete != null ||
+                          onManageRoles != null)
                         Row(
                           children: [
+                            // Manage roles button (only for owners)
+                            if (onManageRoles != null)
+                              Material(
+                                color: AppColors.accentSecondary.withOpacity(
+                                  0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                child: InkWell(
+                                  onTap: onManageRoles,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.person_add_alt_outlined,
+                                      size: 20,
+                                      color: AppColors.accentSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (onManageRoles != null &&
+                                (onEdit != null || onDelete != null))
+                              const SizedBox(width: 8),
                             // Edit button
                             if (onEdit != null)
                               Material(

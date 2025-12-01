@@ -93,6 +93,48 @@ class VehicleService {
     }
     return [];
   }
+
+  /// Get vehicle shares (users with access)
+  Future<List<VehicleShare>> getVehicleShares(String vehicleId) async {
+    final response = await _apiClient.get('/vehicles/$vehicleId/shares');
+    if (response is List) {
+      return response
+          .map((json) => VehicleShare.fromJson(json as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  }
+
+  /// Add or update vehicle share
+  Future<VehicleShare> addOrUpdateVehicleShare(
+    String vehicleId,
+    String email,
+    String role,
+  ) async {
+    final response = await _apiClient.post(
+      '/vehicles/$vehicleId/shares',
+      body: {'email': email, 'role': role},
+    );
+    return VehicleShare.fromJson(response);
+  }
+
+  /// Update vehicle share role
+  Future<VehicleShare> updateVehicleShare(
+    String vehicleId,
+    String userId,
+    String role,
+  ) async {
+    final response = await _apiClient.patch(
+      '/vehicles/$vehicleId/shares/$userId',
+      body: {'role': role},
+    );
+    return VehicleShare.fromJson(response);
+  }
+
+  /// Delete vehicle share
+  Future<void> deleteVehicleShare(String vehicleId, String userId) async {
+    await _apiClient.delete('/vehicles/$vehicleId/shares/$userId');
+  }
 }
 
 class VehicleFuelConfig {
@@ -310,5 +352,36 @@ class VehicleUpdate {
           .toIso8601String()
           .split('T')[0];
     return data;
+  }
+}
+
+class VehicleShare {
+  final String userId;
+  final String email;
+  final String? displayName;
+  final String role; // EDITOR, VIEWER
+  final DateTime? invitedAt;
+  final bool isOwner;
+
+  VehicleShare({
+    required this.userId,
+    required this.email,
+    this.displayName,
+    required this.role,
+    this.invitedAt,
+    this.isOwner = false,
+  });
+
+  factory VehicleShare.fromJson(Map<String, dynamic> json) {
+    return VehicleShare(
+      userId: json['user_id'] as String,
+      email: json['email'] as String,
+      displayName: json['display_name'] as String?,
+      role: json['role'] as String,
+      invitedAt: json['invited_at'] != null
+          ? DateTime.parse(json['invited_at'] as String)
+          : null,
+      isOwner: json['is_owner'] as bool? ?? false,
+    );
   }
 }

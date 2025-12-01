@@ -67,6 +67,7 @@ class VehicleOut(VehicleBase):
 
 
 class VehicleShareRole(str, Enum):
+    OWNER = "OWNER"
     EDITOR = "EDITOR"
     VIEWER = "VIEWER"
 
