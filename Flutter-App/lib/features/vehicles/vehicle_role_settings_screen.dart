@@ -40,15 +40,6 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
         return a.email.compareTo(b.email);
       });
 
-      // Debug: Print the shares list
-      print('=== Shares after sorting ===');
-      for (var i = 0; i < shares.length; i++) {
-        print(
-          '[$i] ${shares[i].email} - isOwner: ${shares[i].isOwner} - role: ${shares[i].role}',
-        );
-      }
-      print('===========================');
-
       setState(() {
         _existingShares = shares;
         _isLoading = false;
