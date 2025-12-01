@@ -16,23 +16,36 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 AS $$
+    -- Return owner first
     SELECT
-        COALESCE(s.user_id, v.owner_id)               AS user_id,
+        v.owner_id AS user_id,
         u.email,
         u.display_name,
-        COALESCE(s.role, 'OWNER'::role_type)          AS role,
-        s.invited_at,
-        (COALESCE(s.user_id, v.owner_id) = v.owner_id) AS is_owner
+        'OWNER'::role_type AS role,
+        NULL::timestamptz AS invited_at,
+        true AS is_owner
     FROM vehicles v
-    JOIN users u_owner
-      ON u_owner.id = v.owner_id
-    LEFT JOIN vehicle_shares s
-      ON s.vehicle_id = v.id
-    LEFT JOIN users u
-      ON u.id = COALESCE(s.user_id, v.owner_id)
+    JOIN users u ON u.id = v.owner_id
     WHERE v.id = p_vehicle_id
-      AND v.owner_id = p_actor_id      -- tylko owner może zobaczyć listę
-    ORDER BY is_owner DESC, u.email
+      AND v.owner_id = p_actor_id
+    
+    UNION ALL
+    
+    -- Then return all shares
+    SELECT
+        s.user_id,
+        u.email,
+        u.display_name,
+        s.role,
+        s.invited_at,
+        false AS is_owner
+    FROM vehicles v
+    JOIN vehicle_shares s ON s.vehicle_id = v.id
+    JOIN users u ON u.id = s.user_id
+    WHERE v.id = p_vehicle_id
+      AND v.owner_id = p_actor_id
+    
+    ORDER BY is_owner DESC, email
 $$;
 
 -- 2) Dodanie / nadpisanie udziału (tylko OWNER)

@@ -31,6 +31,24 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
 
     try {
       final shares = await _vehicleService.getVehicleShares(widget.vehicle.id);
+      // Sort shares to ensure owner appears first
+      shares.sort((a, b) {
+        // Owner always comes first
+        if (a.isOwner) return -1;
+        if (b.isOwner) return 1;
+        // Then sort alphabetically by email
+        return a.email.compareTo(b.email);
+      });
+
+      // Debug: Print the shares list
+      print('=== Shares after sorting ===');
+      for (var i = 0; i < shares.length; i++) {
+        print(
+          '[$i] ${shares[i].email} - isOwner: ${shares[i].isOwner} - role: ${shares[i].role}',
+        );
+      }
+      print('===========================');
+
       setState(() {
         _existingShares = shares;
         _isLoading = false;
@@ -95,6 +113,9 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
       );
 
       if (mounted) {
+        // Reload shares first
+        await _loadShares();
+
         setState(() {
           entry.isSaving = false;
           _shareEntries.remove(entry);
@@ -106,9 +127,6 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
             backgroundColor: AppColors.accentSecondary,
           ),
         );
-
-        // Reload shares
-        _loadShares();
       }
     } catch (e) {
       if (mounted) {
@@ -134,15 +152,15 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
       );
 
       if (mounted) {
+        // Reload shares
+        await _loadShares();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Role updated successfully'),
             backgroundColor: AppColors.accentSecondary,
           ),
         );
-
-        // Reload shares
-        _loadShares();
       }
     } catch (e) {
       if (mounted) {
@@ -190,15 +208,15 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
       await _vehicleService.deleteVehicleShare(widget.vehicle.id, share.userId);
 
       if (mounted) {
+        // Reload shares
+        await _loadShares();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Access removed successfully'),
             backgroundColor: AppColors.accentSecondary,
           ),
         );
-
-        // Reload shares
-        _loadShares();
       }
     } catch (e) {
       if (mounted) {
@@ -262,8 +280,10 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ..._existingShares.map(
-                    (share) => Card(
+                  ...List.generate(_existingShares.length, (index) {
+                    final share = _existingShares[index];
+                    return Card(
+                      key: ValueKey(share.userId),
                       elevation: 0,
                       color: AppColors.bgSurface,
                       margin: const EdgeInsets.only(bottom: 8),
@@ -359,8 +379,8 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
                           ],
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                   const SizedBox(height: 24),
                 ],
 
@@ -393,6 +413,7 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
                                 prefixIcon: Icon(Icons.email_outlined),
                               ),
                               keyboardType: TextInputType.emailAddress,
+                              textCapitalization: TextCapitalization.none,
                               enabled: !shareEntry.isSaving,
                             ),
                             const SizedBox(height: 12),

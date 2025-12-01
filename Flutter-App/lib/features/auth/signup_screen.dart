@@ -51,10 +51,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
                       );
                     },
-                    child: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                    child: const Icon(
+                      Icons.close,
+                      color: AppColors.textSecondary,
+                      size: 20,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -78,7 +84,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onPressed: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -163,10 +171,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Start tracking your vehicle\'s history, costs and performance',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyLarge
-                      ?.copyWith(color: AppColors.textSecondary),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const Spacer(flex: 2),
                 TextFormField(
@@ -177,6 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
+                  textCapitalization: TextCapitalization.none,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your email';
@@ -254,8 +262,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(AppColors.textPrimary),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.textPrimary,
+                              ),
                             ),
                           )
                         : const Text('SIGN UP'),
@@ -280,9 +289,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         },
                         child: Text(
                           'Log in',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
+                          style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
                                 color: AppColors.accentPrimary,
                                 fontWeight: FontWeight.w600,
