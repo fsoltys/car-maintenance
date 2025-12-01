@@ -90,22 +90,13 @@ BEGIN
 END
 $$;
 
--- Users, RBAC, Settings
+-- Users, RBAC
 
 CREATE TABLE IF NOT EXISTS users (
     id              UUID PRIMARY KEY,
     email           VARCHAR(255) NOT NULL UNIQUE,
     password_hash   TEXT NOT NULL,
     display_name    VARCHAR(120),
-    created_at      TIMESTAMPTZ,
-    updated_at      TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS user_settings (
-    user_id         UUID PRIMARY KEY REFERENCES users(id),
-    unit_pref       unit_system NOT NULL DEFAULT 'METRIC',
-    currency        CHAR(3),
-    timezone        VARCHAR(64),
     created_at      TIMESTAMPTZ,
     updated_at      TIMESTAMPTZ
 );
