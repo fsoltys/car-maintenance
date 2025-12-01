@@ -1,11 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_storage.dart';
+import '../auth/session_manager.dart';
+import '../auth/auth_events.dart';
 
 class ApiClient {
   // Use 10.0.2.2 for Android emulator, localhost for iOS simulator
   static const String baseUrl = 'http://10.0.2.2:8000';
   final AuthStorage _authStorage = AuthStorage();
+  final SessionManager _sessionManager = SessionManager();
+  final AuthEvents _authEvents = AuthEvents();
 
   Future<Map<String, String>> _buildHeaders({
     Map<String, String>? headers,
@@ -23,6 +27,20 @@ class ApiClient {
     return baseHeaders;
   }
 
+  /// Handle token refresh on 401 errors
+  /// Returns true if refresh was successful, false if user needs to re-login
+  Future<bool> _handleUnauthorized() async {
+    try {
+      await _sessionManager.refreshAccessToken();
+      return true;
+    } catch (e) {
+      // Refresh failed, clear all auth data and emit session expired event
+      await _authStorage.clearAll();
+      _authEvents.emitSessionExpired();
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>> post(
     String endpoint, {
     Map<String, dynamic>? body,
@@ -35,11 +53,28 @@ class ApiClient {
       includeAuth: includeAuth,
     );
 
-    final response = await http.post(
+    var response = await http.post(
       uri,
       headers: finalHeaders,
       body: body != null ? jsonEncode(body) : null,
     );
+
+    // Handle token refresh on 401
+    if (response.statusCode == 401 && includeAuth) {
+      final refreshed = await _handleUnauthorized();
+      if (refreshed) {
+        // Retry with new token
+        final retryHeaders = await _buildHeaders(
+          headers: headers,
+          includeAuth: includeAuth,
+        );
+        response = await http.post(
+          uri,
+          headers: retryHeaders,
+          body: body != null ? jsonEncode(body) : null,
+        );
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.statusCode == 204 || response.body.isEmpty) {
@@ -67,11 +102,27 @@ class ApiClient {
       includeAuth: includeAuth,
     );
 
-    final response = await http.post(
+    var response = await http.post(
       uri,
       headers: finalHeaders,
       body: body != null ? jsonEncode(body) : null,
     );
+
+    // Handle token refresh on 401
+    if (response.statusCode == 401 && includeAuth) {
+      final refreshed = await _handleUnauthorized();
+      if (refreshed) {
+        final retryHeaders = await _buildHeaders(
+          headers: headers,
+          includeAuth: includeAuth,
+        );
+        response = await http.post(
+          uri,
+          headers: retryHeaders,
+          body: body != null ? jsonEncode(body) : null,
+        );
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.statusCode == 204 || response.body.isEmpty) {
@@ -98,7 +149,19 @@ class ApiClient {
       includeAuth: includeAuth,
     );
 
-    final response = await http.get(uri, headers: finalHeaders);
+    var response = await http.get(uri, headers: finalHeaders);
+
+    // Handle token refresh on 401
+    if (response.statusCode == 401 && includeAuth) {
+      final refreshed = await _handleUnauthorized();
+      if (refreshed) {
+        final retryHeaders = await _buildHeaders(
+          headers: headers,
+          includeAuth: includeAuth,
+        );
+        response = await http.get(uri, headers: retryHeaders);
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.statusCode == 204 || response.body.isEmpty) {
@@ -125,7 +188,19 @@ class ApiClient {
       includeAuth: includeAuth,
     );
 
-    final response = await http.delete(uri, headers: finalHeaders);
+    var response = await http.delete(uri, headers: finalHeaders);
+
+    // Handle token refresh on 401
+    if (response.statusCode == 401 && includeAuth) {
+      final refreshed = await _handleUnauthorized();
+      if (refreshed) {
+        final retryHeaders = await _buildHeaders(
+          headers: headers,
+          includeAuth: includeAuth,
+        );
+        response = await http.delete(uri, headers: retryHeaders);
+      }
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final error = jsonDecode(response.body);
@@ -148,11 +223,27 @@ class ApiClient {
       includeAuth: includeAuth,
     );
 
-    final response = await http.patch(
+    var response = await http.patch(
       uri,
       headers: finalHeaders,
       body: body != null ? jsonEncode(body) : null,
     );
+
+    // Handle token refresh on 401
+    if (response.statusCode == 401 && includeAuth) {
+      final refreshed = await _handleUnauthorized();
+      if (refreshed) {
+        final retryHeaders = await _buildHeaders(
+          headers: headers,
+          includeAuth: includeAuth,
+        );
+        response = await http.patch(
+          uri,
+          headers: retryHeaders,
+          body: body != null ? jsonEncode(body) : null,
+        );
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.statusCode == 204 || response.body.isEmpty) {
@@ -180,11 +271,27 @@ class ApiClient {
       includeAuth: includeAuth,
     );
 
-    final response = await http.put(
+    var response = await http.put(
       uri,
       headers: finalHeaders,
       body: body != null ? jsonEncode(body) : null,
     );
+
+    // Handle token refresh on 401
+    if (response.statusCode == 401 && includeAuth) {
+      final refreshed = await _handleUnauthorized();
+      if (refreshed) {
+        final retryHeaders = await _buildHeaders(
+          headers: headers,
+          includeAuth: includeAuth,
+        );
+        response = await http.put(
+          uri,
+          headers: retryHeaders,
+          body: body != null ? jsonEncode(body) : null,
+        );
+      }
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.statusCode == 204 || response.body.isEmpty) {

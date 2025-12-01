@@ -127,10 +127,7 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
         backgroundColor: AppColors.bgSurface,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        automaticallyImplyLeading: false,
         title: Text('AutoCare', style: Theme.of(context).textTheme.titleLarge),
         actions: [
           IconButton(

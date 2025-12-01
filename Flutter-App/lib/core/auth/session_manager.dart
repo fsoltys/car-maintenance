@@ -1,21 +1,48 @@
 import 'auth_storage.dart';
 import '../api/auth_service.dart';
+import '../api/user_service.dart';
 
 class SessionManager {
   final AuthStorage _storage = AuthStorage();
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
 
   Future<void> login(String email, String password) async {
     final response = await _authService.login(email, password);
-    
+
     await _storage.saveTokens(
       accessToken: response.accessToken,
       refreshToken: response.refreshToken,
     );
+
+    // Fetch and save user profile
+    try {
+      final userProfile = await _userService.getMyProfile();
+      await _storage.saveUserInfo(
+        userId: userProfile.id,
+        email: userProfile.email,
+        displayName: userProfile.displayName,
+      );
+    } catch (e) {
+      // If we can't fetch profile, at least save the email
+      await _storage.saveUserInfo(
+        userId: '', // Will be updated when profile loads
+        email: email,
+        displayName: null,
+      );
+    }
   }
 
-  Future<void> register(String email, String password, String displayName) async {
-    final userProfile = await _authService.register(email, password, displayName);
+  Future<void> register(
+    String email,
+    String password,
+    String displayName,
+  ) async {
+    final userProfile = await _authService.register(
+      email,
+      password,
+      displayName,
+    );
     await _storage.saveUserInfo(
       userId: userProfile.id,
       email: userProfile.email,
@@ -50,7 +77,7 @@ class SessionManager {
     }
 
     final newTokens = await _authService.refreshToken(refreshToken);
-    
+
     await _storage.saveTokens(
       accessToken: newTokens.accessToken,
       refreshToken: newTokens.refreshToken,

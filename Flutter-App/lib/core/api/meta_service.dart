@@ -1,14 +1,12 @@
-import 'dart:convert';
 import 'api_client.dart';
 
 class MetaService {
   final ApiClient _apiClient;
   static MetaService? _instance;
-  
+
   Map<String, dynamic>? _cachedEnums;
 
-  MetaService._({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+  MetaService._({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
   factory MetaService({ApiClient? apiClient}) {
     _instance ??= MetaService._(apiClient: apiClient);
@@ -30,21 +28,23 @@ class MetaService {
   Future<List<FuelTypeEnum>> getFuelTypes({bool forceRefresh = false}) async {
     final enums = await getEnums(forceRefresh: forceRefresh);
     final fuelTypes = enums['fuel_type'] as List<dynamic>?;
-    
+
     if (fuelTypes == null) return [];
-    
+
     return fuelTypes
         .map((item) => FuelTypeEnum.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
   /// Get service types from enums
-  Future<List<ServiceTypeEnum>> getServiceTypes({bool forceRefresh = false}) async {
+  Future<List<ServiceTypeEnum>> getServiceTypes({
+    bool forceRefresh = false,
+  }) async {
     final enums = await getEnums(forceRefresh: forceRefresh);
     final serviceTypes = enums['service_type'] as List<dynamic>?;
-    
+
     if (serviceTypes == null) return [];
-    
+
     return serviceTypes
         .map((item) => ServiceTypeEnum.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -54,9 +54,9 @@ class MetaService {
   Future<List<EnumItem>> getUnitSystems({bool forceRefresh = false}) async {
     final enums = await getEnums(forceRefresh: forceRefresh);
     final unitSystems = enums['unit_system'] as List<dynamic>?;
-    
+
     if (unitSystems == null) return [];
-    
+
     return unitSystems
         .map((item) => EnumItem.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -66,9 +66,9 @@ class MetaService {
   Future<List<EnumItem>> getRoleTypes({bool forceRefresh = false}) async {
     final enums = await getEnums(forceRefresh: forceRefresh);
     final roleTypes = enums['role_type'] as List<dynamic>?;
-    
+
     if (roleTypes == null) return [];
-    
+
     return roleTypes
         .map((item) => EnumItem.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -78,9 +78,9 @@ class MetaService {
   Future<List<EnumItem>> getDrivingCycles({bool forceRefresh = false}) async {
     final enums = await getEnums(forceRefresh: forceRefresh);
     final drivingCycles = enums['driving_cycle'] as List<dynamic>?;
-    
+
     if (drivingCycles == null) return [];
-    
+
     return drivingCycles
         .map((item) => EnumItem.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -97,10 +97,7 @@ class EnumItem {
   final String value;
   final String label;
 
-  EnumItem({
-    required this.value,
-    required this.label,
-  });
+  EnumItem({required this.value, required this.label});
 
   factory EnumItem.fromJson(Map<String, dynamic> json) {
     return EnumItem(
@@ -110,19 +107,13 @@ class EnumItem {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'value': value,
-      'label': label,
-    };
+    return {'value': value, 'label': label};
   }
 }
 
 /// Fuel type enum item
 class FuelTypeEnum extends EnumItem {
-  FuelTypeEnum({
-    required super.value,
-    required super.label,
-  });
+  FuelTypeEnum({required super.value, required super.label});
 
   factory FuelTypeEnum.fromJson(Map<String, dynamic> json) {
     return FuelTypeEnum(
@@ -134,10 +125,7 @@ class FuelTypeEnum extends EnumItem {
 
 /// Service type enum item
 class ServiceTypeEnum extends EnumItem {
-  ServiceTypeEnum({
-    required super.value,
-    required super.label,
-  });
+  ServiceTypeEnum({required super.value, required super.label});
 
   factory ServiceTypeEnum.fromJson(Map<String, dynamic> json) {
     return ServiceTypeEnum(
