@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import List
-from uuid import UUID
+from uuid import UUID, uuid4
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -65,7 +65,7 @@ def create_vehicle(
     """
     Tworzy nowy pojazd przypisany do bieżącego użytkownika.
     """
-    vehicle_id = UUID.uuid4()
+    vehicle_id = uuid4()
     data = payload.model_dump()
 
     params = {
@@ -631,20 +631,21 @@ def add_vehicle_fuels(
         )
 
     config = [item.model_dump() for item in payload]
+    config_json = json.dumps(config)
 
     try:
         rows = db.execute(
             text(
                 """
                 SELECT * FROM car_app.fn_add_vehicle_fuels(
-                    :vehicle_id,
-                    :config::jsonb
+                    CAST(:vehicle_id AS uuid),
+                    CAST(:config AS jsonb)
                 )
                 """
             ),
             {
-                "vehicle_id": vehicle_id,
-                "config": json.dumps(config),
+                "vehicle_id": str(vehicle_id),
+                "config": config_json,
             },
         ).mappings().all()
         db.commit()
@@ -735,22 +736,23 @@ def replace_vehicle_fuels(
         )
 
     config = [item.model_dump() for item in payload]
+    config_json = json.dumps(config)
 
     try:
         rows = db.execute(
             text(
                 """
                 SELECT * FROM car_app.fn_replace_vehicle_fuels(
-                    :user_id,
-                    :vehicle_id,
-                    :config::jsonb
+                    CAST(:user_id AS uuid),
+                    CAST(:vehicle_id AS uuid),
+                    CAST(:config AS jsonb)
                 )
                 """
             ),
             {
-                "user_id": current_user_id,
-                "vehicle_id": vehicle_id,
-                "config": json.dumps(config),
+                "user_id": str(current_user_id),
+                "vehicle_id": str(vehicle_id),
+                "config": config_json,
             },
         ).mappings().all()
         db.commit()

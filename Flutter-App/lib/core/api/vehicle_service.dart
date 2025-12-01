@@ -9,7 +9,7 @@ class VehicleService {
 
   /// Get all vehicles for the current user
   Future<List<Vehicle>> getVehicles() async {
-    final response = await _apiClient.get('/vehicles');
+    final response = await _apiClient.get('/vehicles/');
     if (response is List) {
       return response.map((json) => Vehicle.fromJson(json as Map<String, dynamic>)).toList();
     }
@@ -25,7 +25,7 @@ class VehicleService {
   /// Create a new vehicle
   Future<Vehicle> createVehicle(VehicleCreate vehicle) async {
     final response = await _apiClient.post(
-      '/vehicles',
+      '/vehicles/',
       body: vehicle.toJson(),
     );
     return Vehicle.fromJson(response);
@@ -50,14 +50,11 @@ class VehicleService {
     String vehicleId,
     List<VehicleFuelConfig> fuels,
   ) async {
-    final response = await _apiClient.post(
+    final response = await _apiClient.postList(
       '/vehicles/$vehicleId/fuels',
       body: fuels.map((f) => f.toJson()).toList(),
-    );
-    if (response is List) {
-      return response.map((json) => VehicleFuelConfig.fromJson(json as Map<String, dynamic>)).toList();
-    }
-    return [];
+    ) as List;
+    return response.map((json) => VehicleFuelConfig.fromJson(json as Map<String, dynamic>)).toList();
   }
 }
 

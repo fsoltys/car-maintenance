@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Login successful! Tokens saved securely.'),
+            content: Text('Login successful!'),
             backgroundColor: AppColors.success,
           ),
         );

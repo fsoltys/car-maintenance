@@ -52,7 +52,7 @@ BEGIN
 
         INSERT INTO vehicle_fuels (vehicle_id, fuel, is_primary)
         VALUES (p_vehicle_id, v_fuel, v_is_primary)
-        ON CONFLICT (vehicle_id, fuel) DO UPDATE
+        ON CONFLICT ON CONSTRAINT vehicle_fuels_pkey DO UPDATE
         SET is_primary = EXCLUDED.is_primary;
     END LOOP;
 

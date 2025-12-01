@@ -43,6 +43,70 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
     }
   }
 
+  Future<void> _deleteVehicle(Vehicle vehicle) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.bgSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Delete Vehicle',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${vehicle.name}"? This action cannot be undone.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _vehicleService.deleteVehicle(vehicle.id);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${vehicle.name} deleted successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _loadVehicles(); // Reload the list
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete vehicle: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,9 +240,7 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
                   onEdit: () {
                     // TODO: Navigate to edit vehicle screen
                   },
-                  onDelete: () async {
-                    // TODO: Show confirmation dialog and delete
-                  },
+                  onDelete: () => _deleteVehicle(_vehicles[index]),
                 ),
               );
             },

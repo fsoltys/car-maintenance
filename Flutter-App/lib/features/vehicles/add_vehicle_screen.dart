@@ -123,10 +123,22 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       // Add fuel configuration if any fuels selected
       if (_selectedFuels.isNotEmpty && mounted) {
-        await _vehicleService.addVehicleFuels(
-          createdVehicle.id,
-          _selectedFuels,
-        );
+        try {
+          await _vehicleService.addVehicleFuels(
+            createdVehicle.id,
+            _selectedFuels,
+          );
+        } catch (fuelError) {
+          // If fuel configuration fails, delete the vehicle to maintain consistency
+          try {
+            await _vehicleService.deleteVehicle(createdVehicle.id);
+          } catch (deleteError) {
+            // Log delete error but throw the original fuel error
+            debugPrint('Failed to rollback vehicle creation: $deleteError');
+          }
+          // Re-throw the original error
+          rethrow;
+        }
       }
 
       if (mounted) {
@@ -350,81 +362,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Technical Specs Section
-                      Text(
-                        'Technical Specifications',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: _tankCapacityController,
-                        decoration: const InputDecoration(
-                          labelText: 'Tank Capacity (L)',
-                          hintText: 'e.g., 50.0',
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                        ],
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            final capacity = double.tryParse(value);
-                            if (capacity == null || capacity <= 0) {
-                              return 'Enter a valid capacity';
-                            }
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: _batteryCapacityController,
-                        decoration: const InputDecoration(
-                          labelText: 'Battery Capacity (kWh)',
-                          hintText: 'For electric vehicles',
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                        ],
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            final capacity = double.tryParse(value);
-                            if (capacity == null || capacity <= 0) {
-                              return 'Enter a valid capacity';
-                            }
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: _initialOdometerController,
-                        decoration: const InputDecoration(
-                          labelText: 'Current Odometer (km)',
-                          hintText: 'e.g., 50000',
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                        ],
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            final odometer = double.tryParse(value);
-                            if (odometer == null || odometer < 0) {
-                              return 'Enter a valid odometer reading';
-                            }
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
                       // Fuel Configuration Section
                       Text(
                         'Fuel Configuration',
@@ -456,115 +393,200 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8.0),
                             child: Material(
-                            color: isSelected 
-                                ? AppColors.accentPrimary.withOpacity(0.1)
-                                : AppColors.bgSurface,
-                            borderRadius: BorderRadius.circular(12),
-                            child: InkWell(
-                              onTap: () {
-                                setState(() {
-                                  if (isSelected) {
-                                    _selectedFuels.removeWhere((f) => f.fuel == fuelType.value);
-                                    if (_primaryFuel == fuelType.value) {
-                                      _primaryFuel = null;
-                                    }
-                                  } else {
-                                    _selectedFuels.add(VehicleFuelConfig(
-                                      fuel: fuelType.value,
-                                      isPrimary: false,
-                                    ));
-                                  }
-                                });
-                              },
+                              color: isSelected 
+                                  ? AppColors.accentPrimary.withOpacity(0.1)
+                                  : AppColors.bgSurface,
                               borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.all(16.0),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppColors.accentPrimary
-                                        : AppColors.textSecondary.withOpacity(0.2),
-                                    width: isSelected ? 2 : 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      isSelected 
-                                          ? Icons.check_circle
-                                          : Icons.radio_button_unchecked,
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedFuels.removeWhere((f) => f.fuel == fuelType.value);
+                                      if (_primaryFuel == fuelType.value) {
+                                        _primaryFuel = null;
+                                      }
+                                    } else {
+                                      _selectedFuels.add(VehicleFuelConfig(
+                                        fuel: fuelType.value,
+                                        isPrimary: false,
+                                      ));
+                                    }
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16.0),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
                                       color: isSelected
                                           ? AppColors.accentPrimary
-                                          : AppColors.textSecondary,
+                                          : AppColors.textSecondary.withOpacity(0.2),
+                                      width: isSelected ? 2 : 1,
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        fuelType.label,
-                                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                            ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isSelected 
+                                            ? Icons.check_circle
+                                            : Icons.radio_button_unchecked,
+                                        color: isSelected
+                                            ? AppColors.accentPrimary
+                                            : AppColors.textSecondary,
                                       ),
-                                    ),
-                                    if (isSelected)
-                                      InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            if (isPrimary) {
-                                              _primaryFuel = null;
-                                              final index = _selectedFuels.indexWhere((f) => f.fuel == fuelType.value);
-                                              if (index != -1) {
-                                                _selectedFuels[index] = VehicleFuelConfig(
-                                                  fuel: fuelType.value,
-                                                  isPrimary: false,
-                                                );
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          fuelType.label,
+                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                              ),
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              if (isPrimary) {
+                                                _primaryFuel = null;
+                                                final index = _selectedFuels.indexWhere((f) => f.fuel == fuelType.value);
+                                                if (index != -1) {
+                                                  _selectedFuels[index] = VehicleFuelConfig(
+                                                    fuel: fuelType.value,
+                                                    isPrimary: false,
+                                                  );
+                                                }
+                                              } else {
+                                                _primaryFuel = fuelType.value;
+                                                // Update all fuels to set only this one as primary
+                                                for (int i = 0; i < _selectedFuels.length; i++) {
+                                                  _selectedFuels[i] = VehicleFuelConfig(
+                                                    fuel: _selectedFuels[i].fuel,
+                                                    isPrimary: _selectedFuels[i].fuel == fuelType.value,
+                                                  );
+                                                }
                                               }
-                                            } else {
-                                              _primaryFuel = fuelType.value;
-                                              // Update all fuels to set only this one as primary
-                                              for (int i = 0; i < _selectedFuels.length; i++) {
-                                                _selectedFuels[i] = VehicleFuelConfig(
-                                                  fuel: _selectedFuels[i].fuel,
-                                                  isPrimary: _selectedFuels[i].fuel == fuelType.value,
-                                                );
-                                              }
-                                            }
-                                          });
-                                        },                                              }
-                                            }
-                                          });
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isPrimary
-                                                ? AppColors.accentPrimary
-                                                : AppColors.bgMain,
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            'PRIMARY',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
+                                            });
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
                                               color: isPrimary
-                                                  ? AppColors.textPrimary
-                                                  : AppColors.textSecondary,
+                                                  ? AppColors.accentPrimary
+                                                  : AppColors.bgMain,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'PRIMARY',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: isPrimary
+                                                    ? AppColors.textPrimary
+                                                    : AppColors.textSecondary,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
+                          );
+                        }).toList(),
+                      const SizedBox(height: 24),
+
+                      // Technical Specifications Section
+                      Text(
+                        'Technical Specifications',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Tank Capacity - show only if non-EV fuel selected
+                      if (_selectedFuels.any((f) => f.fuel != 'EV'))
+                        Column(
+                          children: [
+                            TextFormField(
+                              controller: _tankCapacityController,
+                              decoration: const InputDecoration(
+                                labelText: 'Tank Capacity (L)',
+                                hintText: 'e.g., 50.0',
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                              validator: (value) {
+                                if (value != null && value.isNotEmpty) {
+                                  final capacity = double.tryParse(value);
+                                  if (capacity == null || capacity <= 0) {
+                                    return 'Enter a valid capacity';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+
+                      // Battery Capacity - show only if EV fuel selected
+                      if (_selectedFuels.any((f) => f.fuel == 'EV'))
+                        Column(
+                          children: [
+                            TextFormField(
+                              controller: _batteryCapacityController,
+                              decoration: const InputDecoration(
+                                labelText: 'Battery Capacity (kWh)',
+                                hintText: 'For electric vehicles',
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                              validator: (value) {
+                                if (value != null && value.isNotEmpty) {
+                                  final capacity = double.tryParse(value);
+                                  if (capacity == null || capacity <= 0) {
+                                    return 'Enter a valid capacity';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+
+                      // Current Odometer - always visible
+                      TextFormField(
+                        controller: _initialOdometerController,
+                        decoration: const InputDecoration(
+                          labelText: 'Current Odometer (km)',
+                          hintText: 'e.g., 50000',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        ],
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            final odometer = double.tryParse(value);
+                            if (odometer == null || odometer < 0) {
+                              return 'Enter a valid odometer reading';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: 24),
 
                       // Purchase Information Section
