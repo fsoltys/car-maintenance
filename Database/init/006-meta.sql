@@ -3,7 +3,7 @@ SET search_path TO car_app, public;
 -- Zwraca słownik wszystkich enumów używanych w aplikacji.
 -- Struktura:
 -- {
---   "fuel_type": [ { "value": "PB95", "label": "PB95" }, ... ],
+--   "fuel_type": [ { "value": "Petrol", "label": "Petrol" }, ... ],
 --   "service_type": [ ... ],
 --   ...
 -- }

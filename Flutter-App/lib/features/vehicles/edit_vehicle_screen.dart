@@ -19,6 +19,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   final _metaService = MetaService();
   bool _isLoading = false;
   bool _isLoadingFuels = true;
+  late bool _isDualTank;
   List<FuelTypeEnum> _availableFuels = [];
 
   // Required field
@@ -34,6 +35,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   // Optional fields - technical
   late final TextEditingController _productionYearController;
   late final TextEditingController _tankCapacityController;
+  late final TextEditingController _secondaryTankCapacityController;
   late final TextEditingController _batteryCapacityController;
   late final TextEditingController _initialOdometerController;
 
@@ -64,8 +66,12 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     _productionYearController = TextEditingController(
       text: widget.vehicle.productionYear?.toString() ?? '',
     );
+    _isDualTank = widget.vehicle.dualTank;
     _tankCapacityController = TextEditingController(
       text: widget.vehicle.tankCapacityL?.toString() ?? '',
+    );
+    _secondaryTankCapacityController = TextEditingController(
+      text: widget.vehicle.secondaryTankCapacity?.toString() ?? '',
     );
     _batteryCapacityController = TextEditingController(
       text: widget.vehicle.batteryCapacityKwh?.toString() ?? '',
@@ -138,6 +144,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     _policyNumberController.dispose();
     _productionYearController.dispose();
     _tankCapacityController.dispose();
+    _secondaryTankCapacityController.dispose();
     _batteryCapacityController.dispose();
     _initialOdometerController.dispose();
     _purchasePriceController.dispose();
@@ -174,9 +181,14 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
         productionYear: _productionYearController.text.trim().isEmpty
             ? null
             : int.tryParse(_productionYearController.text.trim()),
+        dualTank: _isDualTank,
         tankCapacityL: _tankCapacityController.text.trim().isEmpty
             ? null
             : double.tryParse(_tankCapacityController.text.trim()),
+        secondaryTankCapacity:
+            _secondaryTankCapacityController.text.trim().isEmpty
+            ? null
+            : double.tryParse(_secondaryTankCapacityController.text.trim()),
         batteryCapacityKwh: _batteryCapacityController.text.trim().isEmpty
             ? null
             : double.tryParse(_batteryCapacityController.text.trim()),
@@ -395,9 +407,51 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
+                      const SizedBox(height: 16),
+
+                      // Dual Tank Switch
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Dual Tank System',
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
+                          Switch(
+                            value: _isDualTank,
+                            onChanged: (value) {
+                              setState(() {
+                                _isDualTank = value;
+                                // If switching to single tank and multiple fuels selected, keep only primary
+                                if (!value && _selectedFuels.length > 1) {
+                                  if (_primaryFuel != null) {
+                                    _selectedFuels.removeWhere(
+                                      (f) => f.fuel != _primaryFuel,
+                                    );
+                                  } else {
+                                    // Keep first fuel as primary
+                                    final firstFuel = _selectedFuels.first.fuel;
+                                    _selectedFuels.clear();
+                                    _selectedFuels.add(
+                                      VehicleFuelConfig(
+                                        fuel: firstFuel,
+                                        isPrimary: true,
+                                      ),
+                                    );
+                                    _primaryFuel = firstFuel;
+                                  }
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Text(
-                        'Select fuel types your vehicle uses',
+                        _isDualTank
+                            ? 'Select up to 2 fuel types for dual tank system'
+                            : 'Select a single fuel type',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -436,12 +490,37 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                                         _primaryFuel = null;
                                       }
                                     } else {
+                                      // If not dual tank and a fuel is already selected, replace it
+                                      if (!_isDualTank &&
+                                          _selectedFuels.isNotEmpty) {
+                                        _selectedFuels.clear();
+                                        _primaryFuel = null;
+                                      }
+                                      // If dual tank, limit to 2 fuels
+                                      if (_isDualTank &&
+                                          _selectedFuels.length >= 2) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Maximum 2 fuels for dual tank system',
+                                            ),
+                                            backgroundColor: AppColors.error,
+                                          ),
+                                        );
+                                        return;
+                                      }
                                       _selectedFuels.add(
                                         VehicleFuelConfig(
                                           fuel: fuelType.value,
-                                          isPrimary: false,
+                                          isPrimary: _selectedFuels
+                                              .isEmpty, // First fuel is primary
                                         ),
                                       );
+                                      if (_selectedFuels.length == 1) {
+                                        _primaryFuel = fuelType.value;
+                                      }
                                     }
                                   });
                                 },
@@ -570,9 +649,51 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                           children: [
                             TextFormField(
                               controller: _tankCapacityController,
-                              decoration: const InputDecoration(
-                                labelText: 'Tank Capacity (L)',
+                              decoration: InputDecoration(
+                                labelText:
+                                    _isDualTank &&
+                                        _selectedFuels.length == 2 &&
+                                        !_selectedFuels.any(
+                                          (f) => f.fuel == 'EV',
+                                        )
+                                    ? 'Primary Tank Capacity (L)'
+                                    : 'Tank Capacity (L)',
                                 hintText: 'e.g., 50.0',
+                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
+                                ),
+                              ],
+                              validator: (value) {
+                                if (value != null && value.isNotEmpty) {
+                                  final capacity = double.tryParse(value);
+                                  if (capacity == null || capacity <= 0) {
+                                    return 'Enter a valid capacity';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+
+                      // Secondary Tank Capacity - show only if dual tank with two non-EV fuels
+                      if (_isDualTank &&
+                          _selectedFuels.length == 2 &&
+                          !_selectedFuels.any((f) => f.fuel == 'EV'))
+                        Column(
+                          children: [
+                            TextFormField(
+                              controller: _secondaryTankCapacityController,
+                              decoration: const InputDecoration(
+                                labelText: 'Secondary Tank Capacity (L)',
+                                hintText: 'e.g., 45.0',
                               ),
                               keyboardType:
                                   const TextInputType.numberWithOptions(

@@ -16,6 +16,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _vehicleService = VehicleService();
   final _metaService = MetaService();
   bool _isLoading = false;
+  bool _isDualTank = false;
   List<FuelTypeEnum> _availableFuels = [];
 
   // Required field
@@ -31,6 +32,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   // Optional fields - technical
   final _productionYearController = TextEditingController();
   final _tankCapacityController = TextEditingController();
+  final _secondaryTankCapacityController = TextEditingController();
   final _batteryCapacityController = TextEditingController();
   final _initialOdometerController = TextEditingController();
 
@@ -77,6 +79,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _policyNumberController.dispose();
     _productionYearController.dispose();
     _tankCapacityController.dispose();
+    _secondaryTankCapacityController.dispose();
     _batteryCapacityController.dispose();
     _initialOdometerController.dispose();
     _purchasePriceController.dispose();
@@ -95,25 +98,40 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     try {
       final vehicle = VehicleCreate(
         name: _nameController.text.trim(),
-        model: _modelController.text.trim().isEmpty ? null : _modelController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        vin: _vinController.text.trim().isEmpty ? null : _vinController.text.trim(),
-        plate: _plateController.text.trim().isEmpty ? null : _plateController.text.trim(),
-        policyNumber: _policyNumberController.text.trim().isEmpty ? null : _policyNumberController.text.trim(),
-        productionYear: _productionYearController.text.trim().isEmpty 
-            ? null 
+        model: _modelController.text.trim().isEmpty
+            ? null
+            : _modelController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        vin: _vinController.text.trim().isEmpty
+            ? null
+            : _vinController.text.trim(),
+        plate: _plateController.text.trim().isEmpty
+            ? null
+            : _plateController.text.trim(),
+        policyNumber: _policyNumberController.text.trim().isEmpty
+            ? null
+            : _policyNumberController.text.trim(),
+        productionYear: _productionYearController.text.trim().isEmpty
+            ? null
             : int.tryParse(_productionYearController.text.trim()),
-        tankCapacityL: _tankCapacityController.text.trim().isEmpty 
-            ? null 
+        dualTank: _isDualTank,
+        tankCapacityL: _tankCapacityController.text.trim().isEmpty
+            ? null
             : double.tryParse(_tankCapacityController.text.trim()),
-        batteryCapacityKwh: _batteryCapacityController.text.trim().isEmpty 
-            ? null 
+        secondaryTankCapacity:
+            _secondaryTankCapacityController.text.trim().isEmpty
+            ? null
+            : double.tryParse(_secondaryTankCapacityController.text.trim()),
+        batteryCapacityKwh: _batteryCapacityController.text.trim().isEmpty
+            ? null
             : double.tryParse(_batteryCapacityController.text.trim()),
-        initialOdometerKm: _initialOdometerController.text.trim().isEmpty 
-            ? null 
+        initialOdometerKm: _initialOdometerController.text.trim().isEmpty
+            ? null
             : double.tryParse(_initialOdometerController.text.trim()),
-        purchasePrice: _purchasePriceController.text.trim().isEmpty 
-            ? null 
+        purchasePrice: _purchasePriceController.text.trim().isEmpty
+            ? null
             : double.tryParse(_purchasePriceController.text.trim()),
         purchaseDate: _purchaseDate,
         lastInspectionDate: _lastInspectionDate,
@@ -231,12 +249,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       // Basic Information Section
                       Text(
                         'Basic Information',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(
@@ -283,9 +300,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       // Vehicle Details Section
                       Text(
                         'Vehicle Details',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 16),
 
@@ -297,7 +313,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         ),
                         textCapitalization: TextCapitalization.characters,
                         validator: (value) {
-                          if (value != null && value.isNotEmpty && value.length > 32) {
+                          if (value != null &&
+                              value.isNotEmpty &&
+                              value.length > 32) {
                             return 'VIN must be less than 32 characters';
                           }
                           return null;
@@ -365,19 +383,60 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       // Fuel Configuration Section
                       Text(
                         'Fuel Configuration',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Dual Tank Switch
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Dual Tank System',
+                              style: Theme.of(context).textTheme.bodyLarge,
                             ),
+                          ),
+                          Switch(
+                            value: _isDualTank,
+                            onChanged: (value) {
+                              setState(() {
+                                _isDualTank = value;
+                                // If switching to single tank and multiple fuels selected, keep only primary
+                                if (!value && _selectedFuels.length > 1) {
+                                  if (_primaryFuel != null) {
+                                    _selectedFuels.removeWhere(
+                                      (f) => f.fuel != _primaryFuel,
+                                    );
+                                  } else {
+                                    // Keep first fuel as primary
+                                    final firstFuel = _selectedFuels.first.fuel;
+                                    _selectedFuels.clear();
+                                    _selectedFuels.add(
+                                      VehicleFuelConfig(
+                                        fuel: firstFuel,
+                                        isPrimary: true,
+                                      ),
+                                    );
+                                    _primaryFuel = firstFuel;
+                                  }
+                                }
+                              });
+                            },
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Select fuel types your vehicle uses',
+                        _isDualTank
+                            ? 'Select up to 2 fuel types for dual tank system'
+                            : 'Select a single fuel type',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       if (_availableFuels.isEmpty)
                         const Center(
                           child: Padding(
@@ -387,13 +446,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         )
                       else
                         ..._availableFuels.map((fuelType) {
-                          final isSelected = _selectedFuels.any((f) => f.fuel == fuelType.value);
+                          final isSelected = _selectedFuels.any(
+                            (f) => f.fuel == fuelType.value,
+                          );
                           final isPrimary = _primaryFuel == fuelType.value;
-                          
+
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8.0),
                             child: Material(
-                              color: isSelected 
+                              color: isSelected
                                   ? AppColors.accentPrimary.withOpacity(0.1)
                                   : AppColors.bgSurface,
                               borderRadius: BorderRadius.circular(12),
@@ -401,15 +462,44 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 onTap: () {
                                   setState(() {
                                     if (isSelected) {
-                                      _selectedFuels.removeWhere((f) => f.fuel == fuelType.value);
+                                      _selectedFuels.removeWhere(
+                                        (f) => f.fuel == fuelType.value,
+                                      );
                                       if (_primaryFuel == fuelType.value) {
                                         _primaryFuel = null;
                                       }
                                     } else {
-                                      _selectedFuels.add(VehicleFuelConfig(
-                                        fuel: fuelType.value,
-                                        isPrimary: false,
-                                      ));
+                                      // If not dual tank and a fuel is already selected, replace it
+                                      if (!_isDualTank &&
+                                          _selectedFuels.isNotEmpty) {
+                                        _selectedFuels.clear();
+                                        _primaryFuel = null;
+                                      }
+                                      // If dual tank, limit to 2 fuels
+                                      if (_isDualTank &&
+                                          _selectedFuels.length >= 2) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Maximum 2 fuels for dual tank system',
+                                            ),
+                                            backgroundColor: AppColors.error,
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      _selectedFuels.add(
+                                        VehicleFuelConfig(
+                                          fuel: fuelType.value,
+                                          isPrimary: _selectedFuels
+                                              .isEmpty, // First fuel is primary
+                                        ),
+                                      );
+                                      if (_selectedFuels.length == 1) {
+                                        _primaryFuel = fuelType.value;
+                                      }
                                     }
                                   });
                                 },
@@ -420,7 +510,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     border: Border.all(
                                       color: isSelected
                                           ? AppColors.accentPrimary
-                                          : AppColors.textSecondary.withOpacity(0.2),
+                                          : AppColors.textSecondary.withOpacity(
+                                              0.2,
+                                            ),
                                       width: isSelected ? 2 : 1,
                                     ),
                                     borderRadius: BorderRadius.circular(12),
@@ -428,7 +520,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                   child: Row(
                                     children: [
                                       Icon(
-                                        isSelected 
+                                        isSelected
                                             ? Icons.check_circle
                                             : Icons.radio_button_unchecked,
                                         color: isSelected
@@ -439,8 +531,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                       Expanded(
                                         child: Text(
                                           fuelType.label,
-                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
                                               ),
                                         ),
                                       ),
@@ -450,21 +547,36 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                             setState(() {
                                               if (isPrimary) {
                                                 _primaryFuel = null;
-                                                final index = _selectedFuels.indexWhere((f) => f.fuel == fuelType.value);
+                                                final index = _selectedFuels
+                                                    .indexWhere(
+                                                      (f) =>
+                                                          f.fuel ==
+                                                          fuelType.value,
+                                                    );
                                                 if (index != -1) {
-                                                  _selectedFuels[index] = VehicleFuelConfig(
-                                                    fuel: fuelType.value,
-                                                    isPrimary: false,
-                                                  );
+                                                  _selectedFuels[index] =
+                                                      VehicleFuelConfig(
+                                                        fuel: fuelType.value,
+                                                        isPrimary: false,
+                                                      );
                                                 }
                                               } else {
                                                 _primaryFuel = fuelType.value;
                                                 // Update all fuels to set only this one as primary
-                                                for (int i = 0; i < _selectedFuels.length; i++) {
-                                                  _selectedFuels[i] = VehicleFuelConfig(
-                                                    fuel: _selectedFuels[i].fuel,
-                                                    isPrimary: _selectedFuels[i].fuel == fuelType.value,
-                                                  );
+                                                for (
+                                                  int i = 0;
+                                                  i < _selectedFuels.length;
+                                                  i++
+                                                ) {
+                                                  _selectedFuels[i] =
+                                                      VehicleFuelConfig(
+                                                        fuel: _selectedFuels[i]
+                                                            .fuel,
+                                                        isPrimary:
+                                                            _selectedFuels[i]
+                                                                .fuel ==
+                                                            fuelType.value,
+                                                      );
                                                 }
                                               }
                                             });
@@ -478,7 +590,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                               color: isPrimary
                                                   ? AppColors.accentPrimary
                                                   : AppColors.bgMain,
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Text(
                                               'PRIMARY',
@@ -504,9 +617,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       // Technical Specifications Section
                       Text(
                         'Technical Specifications',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 16),
 
@@ -516,13 +628,25 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           children: [
                             TextFormField(
                               controller: _tankCapacityController,
-                              decoration: const InputDecoration(
-                                labelText: 'Tank Capacity (L)',
+                              decoration: InputDecoration(
+                                labelText:
+                                    _isDualTank &&
+                                        _selectedFuels.length == 2 &&
+                                        !_selectedFuels.any(
+                                          (f) => f.fuel == 'EV',
+                                        )
+                                    ? 'Primary Tank Capacity (L)'
+                                    : 'Tank Capacity (L)',
                                 hintText: 'e.g., 50.0',
                               ),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
+                                ),
                               ],
                               validator: (value) {
                                 if (value != null && value.isNotEmpty) {
@@ -538,7 +662,42 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           ],
                         ),
 
-                      // Battery Capacity - show only if EV fuel selected
+                      // Secondary Tank Capacity - show only if dual tank with two non-EV fuels
+                      if (_isDualTank &&
+                          _selectedFuels.length == 2 &&
+                          !_selectedFuels.any((f) => f.fuel == 'EV'))
+                        Column(
+                          children: [
+                            TextFormField(
+                              controller: _secondaryTankCapacityController,
+                              decoration: const InputDecoration(
+                                labelText: 'Secondary Tank Capacity (L)',
+                                hintText: 'e.g., 40.0',
+                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
+                                ),
+                              ],
+                              validator: (value) {
+                                if (value != null && value.isNotEmpty) {
+                                  final capacity = double.tryParse(value);
+                                  if (capacity == null || capacity <= 0) {
+                                    return 'Enter a valid capacity';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+
+                      // Battery Capacity - show if EV fuel selected
                       if (_selectedFuels.any((f) => f.fuel == 'EV'))
                         Column(
                           children: [
@@ -548,9 +707,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 labelText: 'Battery Capacity (kWh)',
                                 hintText: 'For electric vehicles',
                               ),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
+                                ),
                               ],
                               validator: (value) {
                                 if (value != null && value.isNotEmpty) {
@@ -573,9 +737,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           labelText: 'Current Odometer (km)',
                           hintText: 'e.g., 50000',
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d*'),
+                          ),
                         ],
                         validator: (value) {
                           if (value != null && value.isNotEmpty) {
@@ -592,9 +760,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       // Purchase Information Section
                       Text(
                         'Purchase Information',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 16),
 
@@ -605,9 +772,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           hintText: 'e.g., 15000',
                           prefixText: '\$ ',
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d*'),
+                          ),
                         ],
                         validator: (value) {
                           if (value != null && value.isNotEmpty) {
@@ -634,7 +805,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             _purchaseDate == null
                                 ? 'Select date'
                                 : '${_purchaseDate!.day.toString().padLeft(2, '0')}/${_purchaseDate!.month.toString().padLeft(2, '0')}/${_purchaseDate!.year}',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
                                   color: _purchaseDate == null
                                       ? AppColors.textSecondary
                                       : AppColors.textPrimary,
@@ -657,7 +829,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             _lastInspectionDate == null
                                 ? 'Select date'
                                 : '${_lastInspectionDate!.day.toString().padLeft(2, '0')}/${_lastInspectionDate!.month.toString().padLeft(2, '0')}/${_lastInspectionDate!.year}',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
                                   color: _lastInspectionDate == null
                                       ? AppColors.textSecondary
                                       : AppColors.textPrimary,
@@ -700,7 +873,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.textPrimary),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.textPrimary,
+                              ),
                             ),
                           )
                         : const Text(

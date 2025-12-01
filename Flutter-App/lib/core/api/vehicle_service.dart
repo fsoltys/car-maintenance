@@ -123,7 +123,9 @@ class Vehicle {
   final String? policyNumber;
   final String? model;
   final int? productionYear;
+  final bool dualTank;
   final double? tankCapacityL;
+  final double? secondaryTankCapacity;
   final double? batteryCapacityKwh;
   final double? initialOdometerKm;
   final double? purchasePrice;
@@ -143,7 +145,9 @@ class Vehicle {
     this.policyNumber,
     this.model,
     this.productionYear,
+    this.dualTank = false,
     this.tankCapacityL,
+    this.secondaryTankCapacity,
     this.batteryCapacityKwh,
     this.initialOdometerKm,
     this.purchasePrice,
@@ -165,7 +169,9 @@ class Vehicle {
       policyNumber: json['policy_number'],
       model: json['model'],
       productionYear: json['production_year'],
+      dualTank: json['dual_tank'] ?? false,
       tankCapacityL: json['tank_capacity_l']?.toDouble(),
+      secondaryTankCapacity: json['secondary_tank_capacity']?.toDouble(),
       batteryCapacityKwh: json['battery_capacity_kwh']?.toDouble(),
       initialOdometerKm: json['initial_odometer_km']?.toDouble(),
       purchasePrice: json['purchase_price']?.toDouble(),
@@ -194,7 +200,9 @@ class VehicleCreate {
   final String? policyNumber;
   final String? model;
   final int? productionYear;
+  final bool dualTank;
   final double? tankCapacityL;
+  final double? secondaryTankCapacity;
   final double? batteryCapacityKwh;
   final double? initialOdometerKm;
   final double? purchasePrice;
@@ -209,7 +217,9 @@ class VehicleCreate {
     this.policyNumber,
     this.model,
     this.productionYear,
+    this.dualTank = false,
     this.tankCapacityL,
+    this.secondaryTankCapacity,
     this.batteryCapacityKwh,
     this.initialOdometerKm,
     this.purchasePrice,
@@ -226,7 +236,9 @@ class VehicleCreate {
       'policy_number': policyNumber,
       'model': model,
       'production_year': productionYear,
+      'dual_tank': dualTank,
       'tank_capacity_l': tankCapacityL,
+      'secondary_tank_capacity': secondaryTankCapacity,
       'battery_capacity_kwh': batteryCapacityKwh,
       'initial_odometer_km': initialOdometerKm,
       'purchase_price': purchasePrice,
@@ -246,7 +258,9 @@ class VehicleUpdate {
   final String? policyNumber;
   final String? model;
   final int? productionYear;
+  final bool? dualTank;
   final double? tankCapacityL;
+  final double? secondaryTankCapacity;
   final double? batteryCapacityKwh;
   final double? initialOdometerKm;
   final double? purchasePrice;
@@ -261,7 +275,9 @@ class VehicleUpdate {
     this.policyNumber,
     this.model,
     this.productionYear,
+    this.dualTank,
     this.tankCapacityL,
+    this.secondaryTankCapacity,
     this.batteryCapacityKwh,
     this.initialOdometerKm,
     this.purchasePrice,
@@ -278,7 +294,10 @@ class VehicleUpdate {
     if (policyNumber != null) data['policy_number'] = policyNumber;
     if (model != null) data['model'] = model;
     if (productionYear != null) data['production_year'] = productionYear;
+    if (dualTank != null) data['dual_tank'] = dualTank;
     if (tankCapacityL != null) data['tank_capacity_l'] = tankCapacityL;
+    if (secondaryTankCapacity != null)
+      data['secondary_tank_capacity'] = secondaryTankCapacity;
     if (batteryCapacityKwh != null)
       data['battery_capacity_kwh'] = batteryCapacityKwh;
     if (initialOdometerKm != null)

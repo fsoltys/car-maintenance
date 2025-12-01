@@ -19,7 +19,9 @@ class VehicleBase(BaseModel):
     model: str | None = Field(default=None, max_length=120)
 
     production_year: int | None = None
+    dual_tank: bool = False
     tank_capacity_l: float | None = None
+    secondary_tank_capacity: float | None = None
     battery_capacity_kwh: float | None = None
     initial_odometer_km: float | None = None
 
@@ -45,7 +47,9 @@ class VehicleUpdate(BaseModel):
     model: str | None = Field(default=None, max_length=120)
 
     production_year: int | None = None
+    dual_tank: bool | None = None
     tank_capacity_l: float | None = None
+    secondary_tank_capacity: float | None = None
     battery_capacity_kwh: float | None = None
     initial_odometer_km: float | None = None
 
@@ -86,9 +90,8 @@ class VehicleShareUpdate(BaseModel):
 
 
 class FuelType(str, Enum):
-    PB95 = "PB95"
-    PB98 = "PB98"
-    ON = "ON"
+    Petrol = "Petrol"
+    Diesel = "Diesel"
     LPG = "LPG"
     CNG = "CNG"
     EV = "EV"

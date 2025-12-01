@@ -93,9 +93,8 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fuel_type') THEN
         CREATE TYPE fuel_type AS ENUM (
-            'PB95',
-            'PB98',
-            'ON',
+            'Petrol',
+            'Diesel',
             'LPG',
             'CNG',
             'EV',
@@ -135,7 +134,9 @@ CREATE TABLE IF NOT EXISTS vehicles (
     policy_number           VARCHAR(64),
     model                   VARCHAR(120),
     production_year         INT,
+    dual_tank               BOOLEAN DEFAULT FALSE,
     tank_capacity_l         NUMERIC(8,2),
+    secondary_tank_capacity NUMERIC(8,2),
     battery_capacity_kwh    NUMERIC(8,2),
     initial_odometer_km     NUMERIC(10,1),
     purchase_price          NUMERIC(12,2),
