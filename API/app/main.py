@@ -7,7 +7,6 @@ from app.api.vehicles.routes import router as vehicles_router
 from app.api.fuelings.routes import router as fuelings_router
 from app.api.services.routes import router as services_router
 from app.api.issues.routes import router as issues_router
-from app.api.documents.routes import router as documents_router
 from app.api.odometer_entries.routes import router as odometer_entries_router
 from app.api.expenses.routes import router as expenses_router
 from app.api.reminders.routes import router as reminders_router

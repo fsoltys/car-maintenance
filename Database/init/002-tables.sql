@@ -60,14 +60,7 @@ BEGIN
         );
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_type') THEN
-        CREATE TYPE document_type AS ENUM (
-            'INSURANCE_OC',
-            'INSURANCE_AC',
-            'TECH_INSPECTION',
-            'OTHER'
-        );
-    END IF;
+
 
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'expense_category') THEN
         CREATE TYPE expense_category AS ENUM (
@@ -260,28 +253,7 @@ CREATE INDEX IF NOT EXISTS idx_issues_vehicle_status
 CREATE INDEX IF NOT EXISTS idx_issues_priority
     ON issues(priority);
 
--- Documents (OC/AC, przegląd)
 
-CREATE TABLE IF NOT EXISTS documents (
-    id              UUID PRIMARY KEY,
-    vehicle_id      UUID NOT NULL REFERENCES vehicles(id),
-    doc_type        document_type NOT NULL,
-    number          VARCHAR(64),
-    provider        VARCHAR(160),
-    issue_date      DATE,
-    valid_from      DATE,
-    valid_to        DATE,
-    note            TEXT,
-    created_at      TIMESTAMPTZ,
-    CONSTRAINT chk_doc_valid_period CHECK (valid_from IS NULL OR valid_to IS NULL OR valid_from <= valid_to),
-    CONSTRAINT chk_doc_issue_before_valid CHECK (issue_date IS NULL OR valid_from IS NULL OR issue_date <= valid_from)
-);
-
-CREATE INDEX IF NOT EXISTS idx_documents_vehicle_doc_type
-    ON documents(vehicle_id, doc_type);
-
-CREATE INDEX IF NOT EXISTS idx_documents_vehicle_valid_to
-    ON documents(vehicle_id, valid_to);
 
 -- Odometer History
 
