@@ -11,10 +11,7 @@ class ApiClient {
     Map<String, String>? headers,
     bool includeAuth = true,
   }) async {
-    final baseHeaders = {
-      'Content-Type': 'application/json',
-      ...?headers,
-    };
+    final baseHeaders = {'Content-Type': 'application/json', ...?headers};
 
     if (includeAuth) {
       final token = await _authStorage.getAccessToken();
@@ -37,7 +34,7 @@ class ApiClient {
       headers: headers,
       includeAuth: includeAuth,
     );
-    
+
     final response = await http.post(
       uri,
       headers: finalHeaders,
@@ -45,6 +42,9 @@ class ApiClient {
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 204 || response.body.isEmpty) {
+        return {};
+      }
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       final error = jsonDecode(response.body);
@@ -66,7 +66,7 @@ class ApiClient {
       headers: headers,
       includeAuth: includeAuth,
     );
-    
+
     final response = await http.post(
       uri,
       headers: finalHeaders,
@@ -74,6 +74,9 @@ class ApiClient {
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 204 || response.body.isEmpty) {
+        return null;
+      }
       return jsonDecode(response.body);
     } else {
       final error = jsonDecode(response.body);
@@ -94,13 +97,13 @@ class ApiClient {
       headers: headers,
       includeAuth: includeAuth,
     );
-    
-    final response = await http.get(
-      uri,
-      headers: finalHeaders,
-    );
+
+    final response = await http.get(uri, headers: finalHeaders);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 204 || response.body.isEmpty) {
+        return null;
+      }
       return jsonDecode(response.body);
     } else {
       final error = jsonDecode(response.body);
@@ -121,11 +124,8 @@ class ApiClient {
       headers: headers,
       includeAuth: includeAuth,
     );
-    
-    final response = await http.delete(
-      uri,
-      headers: finalHeaders,
-    );
+
+    final response = await http.delete(uri, headers: finalHeaders);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final error = jsonDecode(response.body);
@@ -147,7 +147,7 @@ class ApiClient {
       headers: headers,
       includeAuth: includeAuth,
     );
-    
+
     final response = await http.patch(
       uri,
       headers: finalHeaders,
@@ -155,6 +155,9 @@ class ApiClient {
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 204 || response.body.isEmpty) {
+        return {};
+      }
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       final error = jsonDecode(response.body);
@@ -176,7 +179,7 @@ class ApiClient {
       headers: headers,
       includeAuth: includeAuth,
     );
-    
+
     final response = await http.put(
       uri,
       headers: finalHeaders,
@@ -184,6 +187,9 @@ class ApiClient {
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 204 || response.body.isEmpty) {
+        return null;
+      }
       return jsonDecode(response.body);
     } else {
       final error = jsonDecode(response.body);
@@ -199,10 +205,7 @@ class ApiException implements Exception {
   final int statusCode;
   final String message;
 
-  ApiException({
-    required this.statusCode,
-    required this.message,
-  });
+  ApiException({required this.statusCode, required this.message});
 
   @override
   String toString() => 'ApiException($statusCode): $message';

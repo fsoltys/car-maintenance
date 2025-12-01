@@ -22,7 +22,8 @@ RETURNS TABLE (
     purchase_date          date,
     last_inspection_date   date,
     created_at             timestamptz,
-    updated_at             timestamptz
+    updated_at             timestamptz,
+    user_role              varchar
 )
 LANGUAGE sql
 AS $$
@@ -43,7 +44,11 @@ AS $$
         v.purchase_date,
         v.last_inspection_date,
         v.created_at,
-        v.updated_at
+        v.updated_at,
+        CASE
+            WHEN v.owner_id = p_user_id THEN 'OWNER'
+            ELSE COALESCE(s.role::varchar, 'VIEWER')
+        END AS user_role
     FROM vehicles v
     LEFT JOIN vehicle_shares s
       ON s.vehicle_id = v.id

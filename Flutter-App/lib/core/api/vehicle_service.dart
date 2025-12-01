@@ -1,17 +1,18 @@
-import 'dart:convert';
 import 'api_client.dart';
 
 class VehicleService {
   final ApiClient _apiClient;
 
   VehicleService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+    : _apiClient = apiClient ?? ApiClient();
 
   /// Get all vehicles for the current user
   Future<List<Vehicle>> getVehicles() async {
     final response = await _apiClient.get('/vehicles/');
     if (response is List) {
-      return response.map((json) => Vehicle.fromJson(json as Map<String, dynamic>)).toList();
+      return response
+          .map((json) => Vehicle.fromJson(json as Map<String, dynamic>))
+          .toList();
     }
     return [];
   }
@@ -50,11 +51,47 @@ class VehicleService {
     String vehicleId,
     List<VehicleFuelConfig> fuels,
   ) async {
-    final response = await _apiClient.postList(
+    final response =
+        await _apiClient.postList(
+              '/vehicles/$vehicleId/fuels',
+              body: fuels.map((f) => f.toJson()).toList(),
+            )
+            as List;
+    return response
+        .map((json) => VehicleFuelConfig.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Get vehicle fuels configuration
+  Future<List<VehicleFuelConfig>> getVehicleFuels(String vehicleId) async {
+    final response = await _apiClient.get('/vehicles/$vehicleId/fuels');
+    if (response is List) {
+      return response
+          .map(
+            (json) => VehicleFuelConfig.fromJson(json as Map<String, dynamic>),
+          )
+          .toList();
+    }
+    return [];
+  }
+
+  /// Replace vehicle fuels configuration (PUT - for editing)
+  Future<List<VehicleFuelConfig>> replaceVehicleFuels(
+    String vehicleId,
+    List<VehicleFuelConfig> fuels,
+  ) async {
+    final response = await _apiClient.put(
       '/vehicles/$vehicleId/fuels',
       body: fuels.map((f) => f.toJson()).toList(),
-    ) as List;
-    return response.map((json) => VehicleFuelConfig.fromJson(json as Map<String, dynamic>)).toList();
+    );
+    if (response is List) {
+      return response
+          .map(
+            (json) => VehicleFuelConfig.fromJson(json as Map<String, dynamic>),
+          )
+          .toList();
+    }
+    return [];
   }
 }
 
@@ -62,10 +99,7 @@ class VehicleFuelConfig {
   final String fuel; // Use string value from API
   final bool isPrimary;
 
-  VehicleFuelConfig({
-    required this.fuel,
-    required this.isPrimary,
-  });
+  VehicleFuelConfig({required this.fuel, required this.isPrimary});
 
   factory VehicleFuelConfig.fromJson(Map<String, dynamic> json) {
     return VehicleFuelConfig(
@@ -75,10 +109,7 @@ class VehicleFuelConfig {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'fuel': fuel,
-      'is_primary': isPrimary,
-    };
+    return {'fuel': fuel, 'is_primary': isPrimary};
   }
 }
 
@@ -100,6 +131,7 @@ class Vehicle {
   final DateTime? lastInspectionDate;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? userRole; // OWNER, EDITOR, VIEWER
 
   Vehicle({
     required this.id,
@@ -119,6 +151,7 @@ class Vehicle {
     this.lastInspectionDate,
     this.createdAt,
     this.updatedAt,
+    this.userRole,
   });
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
@@ -148,6 +181,7 @@ class Vehicle {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
+      userRole: json['user_role'],
     );
   }
 }
@@ -197,7 +231,9 @@ class VehicleCreate {
       'initial_odometer_km': initialOdometerKm,
       'purchase_price': purchasePrice,
       'purchase_date': purchaseDate?.toIso8601String().split('T')[0],
-      'last_inspection_date': lastInspectionDate?.toIso8601String().split('T')[0],
+      'last_inspection_date': lastInspectionDate?.toIso8601String().split(
+        'T',
+      )[0],
     };
   }
 }
@@ -243,11 +279,17 @@ class VehicleUpdate {
     if (model != null) data['model'] = model;
     if (productionYear != null) data['production_year'] = productionYear;
     if (tankCapacityL != null) data['tank_capacity_l'] = tankCapacityL;
-    if (batteryCapacityKwh != null) data['battery_capacity_kwh'] = batteryCapacityKwh;
-    if (initialOdometerKm != null) data['initial_odometer_km'] = initialOdometerKm;
+    if (batteryCapacityKwh != null)
+      data['battery_capacity_kwh'] = batteryCapacityKwh;
+    if (initialOdometerKm != null)
+      data['initial_odometer_km'] = initialOdometerKm;
     if (purchasePrice != null) data['purchase_price'] = purchasePrice;
-    if (purchaseDate != null) data['purchase_date'] = purchaseDate!.toIso8601String().split('T')[0];
-    if (lastInspectionDate != null) data['last_inspection_date'] = lastInspectionDate!.toIso8601String().split('T')[0];
+    if (purchaseDate != null)
+      data['purchase_date'] = purchaseDate!.toIso8601String().split('T')[0];
+    if (lastInspectionDate != null)
+      data['last_inspection_date'] = lastInspectionDate!
+          .toIso8601String()
+          .split('T')[0];
     return data;
   }
 }

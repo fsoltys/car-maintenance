@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
+import '../../core/auth/auth_storage.dart';
 import 'widgets/vehicle_card.dart';
 import 'add_vehicle_screen.dart';
+import 'edit_vehicle_screen.dart';
+import '../profile/profile_screen.dart';
 
 class VehicleListScreen extends StatefulWidget {
   const VehicleListScreen({super.key});
@@ -13,14 +16,26 @@ class VehicleListScreen extends StatefulWidget {
 
 class _VehicleListScreenState extends State<VehicleListScreen> {
   final VehicleService _vehicleService = VehicleService();
+  final AuthStorage _authStorage = AuthStorage();
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String _displayName = 'User';
 
   @override
   void initState() {
     super.initState();
+    _loadUserInfo();
     _loadVehicles();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final userInfo = await _authStorage.getUserInfo();
+    if (userInfo != null && mounted) {
+      setState(() {
+        _displayName = userInfo.displayName ?? userInfo.email.split('@').first;
+      });
+    }
   }
 
   Future<void> _loadVehicles() async {
@@ -49,14 +64,12 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.bgSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Delete Vehicle',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
         content: Text(
           'Are you sure you want to delete "${vehicle.name}"? This action cannot be undone.',
@@ -72,9 +85,7 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -85,7 +96,7 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
 
     try {
       await _vehicleService.deleteVehicle(vehicle.id);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -119,15 +130,18 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'AutoCare',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        title: Text('AutoCare', style: Theme.of(context).textTheme.titleLarge),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_circle),
-            onPressed: () {
-              // TODO: Navigate to profile screen
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+              // Reload user info if display name was changed
+              if (result == true) {
+                _loadUserInfo();
+              }
             },
           ),
         ],
@@ -136,26 +150,26 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _errorMessage!,
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadVehicles,
-                          child: const Text('Retry'),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _errorMessage!,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  )
-                : _buildContent(),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadVehicles,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+            : _buildContent(),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -188,20 +202,31 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
             Text(
               'No vehicles yet',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Add your first vehicle to get started',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
       );
     }
+
+    // Group vehicles by role
+    final ownedVehicles = _vehicles
+        .where((v) => v.userRole == 'OWNER')
+        .toList();
+    final editorVehicles = _vehicles
+        .where((v) => v.userRole == 'EDITOR')
+        .toList();
+    final viewerVehicles = _vehicles
+        .where((v) => v.userRole == 'VIEWER')
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,38 +237,123 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome, Filip',
+                'Welcome, $_displayName',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 4),
               Text(
                 'Select your vehicle',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
               ),
             ],
           ),
         ),
         Expanded(
-          child: ListView.builder(
+          child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: _vehicles.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: VehicleCard(
-                  vehicle: _vehicles[index],
-                  onTap: () {
-                    // TODO: Navigate to vehicle detail screen
-                  },
-                  onEdit: () {
-                    // TODO: Navigate to edit vehicle screen
-                  },
-                  onDelete: () => _deleteVehicle(_vehicles[index]),
+            children: [
+              // Owned vehicles section
+              if (ownedVehicles.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+                  child: Text(
+                    'Owned',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              );
-            },
+                ...ownedVehicles.map(
+                  (vehicle) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: VehicleCard(
+                      vehicle: vehicle,
+                      onTap: () {
+                        // TODO: Navigate to vehicle detail screen
+                      },
+                      onEdit: () async {
+                        final result = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                EditVehicleScreen(vehicle: vehicle),
+                          ),
+                        );
+                        if (result == true) {
+                          _loadVehicles();
+                        }
+                      },
+                      onDelete: () => _deleteVehicle(vehicle),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              // Editor vehicles section
+              if (editorVehicles.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+                  child: Text(
+                    'Editor',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ...editorVehicles.map(
+                  (vehicle) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: VehicleCard(
+                      vehicle: vehicle,
+                      onTap: () {
+                        // TODO: Navigate to vehicle detail screen
+                      },
+                      onEdit: () async {
+                        final result = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                EditVehicleScreen(vehicle: vehicle),
+                          ),
+                        );
+                        if (result == true) {
+                          _loadVehicles();
+                        }
+                      },
+                      // No delete button for editors
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              // Viewer vehicles section
+              if (viewerVehicles.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+                  child: Text(
+                    'Viewer',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ...viewerVehicles.map(
+                  (vehicle) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: VehicleCard(
+                      vehicle: vehicle,
+                      onTap: () {
+                        // TODO: Navigate to vehicle detail screen
+                      },
+                      // No edit or delete buttons for viewers
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],

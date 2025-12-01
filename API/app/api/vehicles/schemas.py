@@ -59,6 +59,7 @@ class VehicleOut(VehicleBase):
     owner_id: UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    user_role: str | None = None  # OWNER, EDITOR, VIEWER
 
 
 class VehicleShareRole(str, Enum):

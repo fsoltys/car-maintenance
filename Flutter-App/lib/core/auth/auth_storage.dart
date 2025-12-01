@@ -2,7 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthStorage {
   static const _storage = FlutterSecureStorage();
-  
+
   static const _keyAccessToken = 'access_token';
   static const _keyRefreshToken = 'refresh_token';
   static const _keyUserId = 'user_id';
@@ -47,6 +47,14 @@ class AuthStorage {
     ]);
   }
 
+  Future<void> updateDisplayName(String? displayName) async {
+    if (displayName != null) {
+      await _storage.write(key: _keyUserDisplayName, value: displayName);
+    } else {
+      await _storage.delete(key: _keyUserDisplayName);
+    }
+  }
+
   Future<UserInfo?> getUserInfo() async {
     final userId = await _storage.read(key: _keyUserId);
     final email = await _storage.read(key: _keyUserEmail);
@@ -56,11 +64,7 @@ class AuthStorage {
       return null;
     }
 
-    return UserInfo(
-      userId: userId,
-      email: email,
-      displayName: displayName,
-    );
+    return UserInfo(userId: userId, email: email, displayName: displayName);
   }
 
   Future<void> deleteUserInfo() async {
@@ -72,10 +76,7 @@ class AuthStorage {
   }
 
   Future<void> clearAll() async {
-    await Future.wait([
-      deleteTokens(),
-      deleteUserInfo(),
-    ]);
+    await Future.wait([deleteTokens(), deleteUserInfo()]);
   }
 
   Future<bool> isLoggedIn() async {
@@ -89,9 +90,5 @@ class UserInfo {
   final String email;
   final String? displayName;
 
-  UserInfo({
-    required this.userId,
-    required this.email,
-    this.displayName,
-  });
+  UserInfo({required this.userId, required this.email, this.displayName});
 }

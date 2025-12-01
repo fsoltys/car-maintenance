@@ -5,15 +5,15 @@ import '../../../core/api/vehicle_service.dart';
 class VehicleCard extends StatelessWidget {
   final Vehicle vehicle;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const VehicleCard({
     super.key,
     required this.vehicle,
     required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -31,103 +31,125 @@ class VehicleCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          height: 140,
           child: Row(
             children: [
               // Left side: Vehicle info
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vehicle.name,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    if (vehicle.model != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        vehicle.model!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              vehicle.name,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                      ),
-                    ],
-                    if (vehicle.description != null && vehicle.description!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        vehicle.description!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    // Action buttons
-                    Row(
-                      children: [
-                        // Edit button
-                        Material(
-                          color: AppColors.accentPrimary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          child: InkWell(
-                            onTap: onEdit,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.edit_outlined,
-                                size: 20,
-                                color: AppColors.accentPrimary,
+                            if (vehicle.model != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                vehicle.model!,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: AppColors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Delete button
-                        Material(
-                          color: AppColors.accentSecondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          child: InkWell(
-                            onTap: onDelete,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.delete_outline,
-                                size: 20,
-                                color: AppColors.accentSecondary,
+                            ],
+                            if (vehicle.description != null &&
+                                vehicle.description!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                vehicle.description!,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: AppColors.textSecondary),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ),
+                            ],
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      // Action buttons (only show if user has edit/delete permissions)
+                      if (onEdit != null || onDelete != null)
+                        Row(
+                          children: [
+                            // Edit button
+                            if (onEdit != null)
+                              Material(
+                                color: AppColors.accentSecondary.withOpacity(
+                                  0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                child: InkWell(
+                                  onTap: onEdit,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.edit_outlined,
+                                      size: 20,
+                                      color: AppColors.accentSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (onEdit != null && onDelete != null)
+                              const SizedBox(width: 8),
+                            // Delete button
+                            if (onDelete != null)
+                              Material(
+                                color: AppColors.accentPrimary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                child: InkWell(
+                                  onTap: onDelete,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.delete_outline,
+                                      size: 20,
+                                      color: AppColors.accentPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
               // Right side: Vehicle image
               Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: AppColors.accentPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                width: 140,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF9386AA),
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
                 ),
                 child: Center(
-                  child: Icon(
-                    Icons.directions_car,
-                    size: 48,
-                    color: AppColors.accentPrimary.withOpacity(0.5),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Image.asset(
+                      'assets/images/car_list_placeholder.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
