@@ -27,12 +27,8 @@ class OdometerService {
     ).replace(queryParameters: queryParams);
 
     final response = await _apiClient.get(uri.toString());
-    print('Raw odometer response: $response');
     if (response is List) {
-      print('Response is a list with ${response.length} items');
-      if (response.isNotEmpty) {
-        print('First item: ${response.first}');
-      }
+      if (response.isNotEmpty) {}
       return response
           .map(
             (json) =>
