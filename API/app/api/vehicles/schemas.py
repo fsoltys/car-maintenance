@@ -119,6 +119,8 @@ class FuelingBase(BaseModel):
     driving_cycle: DrivingCycle | None = None
     fuel: FuelType
     note: str | None = None
+    fuel_level_before: float | None = Field(default=None, ge=0, le=100)
+    fuel_level_after: float | None = Field(default=None, ge=0, le=100)
 
 
 class FuelingCreate(FuelingBase):
@@ -135,6 +137,8 @@ class FuelingUpdate(BaseModel):
     driving_cycle: DrivingCycle | None = None
     fuel: FuelType | None = None
     note: str | None = None
+    fuel_level_before: float | None = Field(default=None, ge=0, le=100)
+    fuel_level_after: float | None = Field(default=None, ge=0, le=100)
 
 
 class FuelingOut(FuelingBase):

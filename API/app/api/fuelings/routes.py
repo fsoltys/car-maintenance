@@ -200,6 +200,8 @@ def create_fueling(
         else None,
         "fuel": data["fuel"].value,
         "note": data.get("note"),
+        "fuel_level_before": data.get("fuel_level_before"),
+        "fuel_level_after": data.get("fuel_level_after"),
     }
 
     try:
@@ -216,7 +218,9 @@ def create_fueling(
                     :full_tank,
                     :driving_cycle,
                     :fuel,
-                    :note
+                    :note,
+                    :fuel_level_before,
+                    :fuel_level_after
                 )
                 """
             ),
@@ -328,6 +332,8 @@ def update_fueling(
         if isinstance(base["fuel"], str)
         else base["fuel"].value,
         "note": base.get("note"),
+        "fuel_level_before": base.get("fuel_level_before"),
+        "fuel_level_after": base.get("fuel_level_after"),
     }
 
     try:
@@ -344,7 +350,9 @@ def update_fueling(
                     :full_tank,
                     :driving_cycle,
                     :fuel,
-                    :note
+                    :note,
+                    :fuel_level_before,
+                    :fuel_level_after
                 )
                 """
             ),

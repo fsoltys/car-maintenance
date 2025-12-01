@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
+import '../fuel/fuel_screen.dart';
 
 class VehicleDashboardScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -142,7 +143,12 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                       icon: Icons.local_gas_station,
                       label: 'Fuel',
                       onTap: () {
-                        // TODO: Navigate to fuel module
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                FuelScreen(vehicle: widget.vehicle),
+                          ),
+                        );
                       },
                     ),
                     _buildModuleButton(

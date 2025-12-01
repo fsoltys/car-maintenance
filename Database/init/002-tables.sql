@@ -178,7 +178,11 @@ CREATE TABLE IF NOT EXISTS fuelings (
     driving_cycle   driving_cycle,
     fuel            fuel_type NOT NULL,
     note            TEXT,
-    created_at      TIMESTAMPTZ
+    fuel_level_before NUMERIC(5,2),  -- Tank level before fueling (0-100%)
+    fuel_level_after  NUMERIC(5,2),  -- Tank level after fueling (0-100%)
+    created_at      TIMESTAMPTZ,
+    CONSTRAINT chk_fuel_level_before_range CHECK (fuel_level_before IS NULL OR (fuel_level_before >= 0 AND fuel_level_before <= 100)),
+    CONSTRAINT chk_fuel_level_after_range CHECK (fuel_level_after IS NULL OR (fuel_level_after >= 0 AND fuel_level_after <= 100))
 );
 
 CREATE INDEX IF NOT EXISTS idx_fuelings_vehicle_filled_at

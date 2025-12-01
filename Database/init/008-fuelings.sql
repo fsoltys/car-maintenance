@@ -173,7 +173,9 @@ CREATE OR REPLACE FUNCTION car_app.fn_create_fueling(
     p_full_tank       boolean,
     p_driving_cycle   driving_cycle,
     p_fuel            fuel_type,
-    p_note            text
+    p_note            text,
+    p_fuel_level_before double precision DEFAULT NULL,
+    p_fuel_level_after  double precision DEFAULT NULL
 )
 RETURNS TABLE (
     id              uuid,
@@ -187,6 +189,8 @@ RETURNS TABLE (
     driving_cycle   driving_cycle,
     fuel            fuel_type,
     note            text,
+    fuel_level_before numeric(5,2),
+    fuel_level_after  numeric(5,2),
     created_at      timestamptz
 )
 LANGUAGE plpgsql
@@ -250,6 +254,8 @@ BEGIN
         driving_cycle,
         fuel,
         note,
+        fuel_level_before,
+        fuel_level_after,
         created_at
     )
     VALUES (
@@ -264,6 +270,8 @@ BEGIN
         p_driving_cycle,
         p_fuel,
         p_note,
+        p_fuel_level_before,
+        p_fuel_level_after,
         now()
     )
     RETURNING * INTO v_row;
@@ -281,6 +289,8 @@ BEGIN
         v_row.driving_cycle,
         v_row.fuel,
         v_row.note,
+        v_row.fuel_level_before,
+        v_row.fuel_level_after,
         v_row.created_at;
 END;
 $$;
@@ -297,7 +307,9 @@ CREATE OR REPLACE FUNCTION car_app.fn_update_fueling(
     p_full_tank       boolean,
     p_driving_cycle   driving_cycle,
     p_fuel            fuel_type,
-    p_note            text
+    p_note            text,
+    p_fuel_level_before double precision DEFAULT NULL,
+    p_fuel_level_after  double precision DEFAULT NULL
 )
 RETURNS TABLE (
     id              uuid,
@@ -311,6 +323,8 @@ RETURNS TABLE (
     driving_cycle   driving_cycle,
     fuel            fuel_type,
     note            text,
+    fuel_level_before numeric(5,2),
+    fuel_level_after  numeric(5,2),
     created_at      timestamptz
 )
 LANGUAGE plpgsql
@@ -380,7 +394,9 @@ BEGIN
         full_tank      = p_full_tank,
         driving_cycle  = p_driving_cycle,
         fuel           = p_fuel,
-        note           = p_note
+        note           = p_note,
+        fuel_level_before = p_fuel_level_before,
+        fuel_level_after  = p_fuel_level_after
     WHERE f.id = p_fueling_id
     RETURNING * INTO v_row;
 
@@ -401,6 +417,8 @@ BEGIN
         v_row.driving_cycle,
         v_row.fuel,
         v_row.note,
+        v_row.fuel_level_before,
+        v_row.fuel_level_after,
         v_row.created_at;
 END;
 $$;
