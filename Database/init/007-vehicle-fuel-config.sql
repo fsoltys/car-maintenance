@@ -1,5 +1,74 @@
 SET search_path TO car_app, public;
 
+-- Funkcja do dodawania paliw do pojazdu (bez sprawdzania uprawnień - użytkownik jest właścicielem)
+-- Używana przy tworzeniu pojazdu
+
+CREATE OR REPLACE FUNCTION car_app.fn_add_vehicle_fuels(
+    p_vehicle_id uuid,
+    p_config     jsonb
+)
+RETURNS TABLE (
+    vehicle_id uuid,
+    fuel       fuel_type,
+    is_primary boolean
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_item          jsonb;
+    v_primary_count int := 0;
+    v_fuel          fuel_type;
+    v_is_primary    boolean;
+BEGIN
+    -- 1) Walidacja formatu JSON
+    IF p_config IS NULL OR jsonb_typeof(p_config) <> 'array' THEN
+        RAISE EXCEPTION 'Config must be a JSON array'
+            USING ERRCODE = '22023';
+    END IF;
+
+    -- 2) Walidacja paliw & liczenie primary
+    FOR v_item IN
+        SELECT jsonb_array_elements(p_config)
+    LOOP
+        v_fuel := (v_item->>'fuel')::fuel_type;
+        v_is_primary := COALESCE((v_item->>'is_primary')::boolean, false);
+
+        IF v_is_primary THEN
+            v_primary_count := v_primary_count + 1;
+        END IF;
+    END LOOP;
+
+    IF v_primary_count > 1 THEN
+        RAISE EXCEPTION 'At most one primary fuel is allowed'
+            USING ERRCODE = '22023';
+    END IF;
+
+    -- 3) Wstawianie paliw
+    FOR v_item IN
+        SELECT jsonb_array_elements(p_config)
+    LOOP
+        v_fuel := (v_item->>'fuel')::fuel_type;
+        v_is_primary := COALESCE((v_item->>'is_primary')::boolean, false);
+
+        INSERT INTO vehicle_fuels (vehicle_id, fuel, is_primary)
+        VALUES (p_vehicle_id, v_fuel, v_is_primary)
+        ON CONFLICT (vehicle_id, fuel) DO UPDATE
+        SET is_primary = EXCLUDED.is_primary;
+    END LOOP;
+
+    -- 4) Zwracamy aktualną konfigurację
+    RETURN QUERY
+    SELECT
+        vf.vehicle_id,
+        vf.fuel,
+        vf.is_primary
+    FROM vehicle_fuels vf
+    WHERE vf.vehicle_id = p_vehicle_id
+    ORDER BY vf.is_primary DESC, vf.fuel;
+END;
+$$;
+
+
 -- 1) Lista dozwolonych paliw dla pojazdu
 --    OWNER + każdy, kto ma share (VIEWER/EDITOR/OWNER)
 

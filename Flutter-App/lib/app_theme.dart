@@ -14,6 +14,12 @@ class AppColors {
   static const Color textSecondary = Color(0xFFC7C7C7);
   static const Color textMuted = Color(0xFF8B8B8B);
   static const Color textOnAccent = Color(0xFF111111);
+
+  // Status colors
+  static const Color success = Color(0xFF10B981);
+  static const Color error = Color(0xFFEF4444);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color info = Color(0xFF3B82F6);
 }
 
 class AppTheme {
@@ -28,8 +34,8 @@ class AppTheme {
         onPrimary: AppColors.textOnAccent,
         secondary: AppColors.accentSecondary,
         onSecondary: AppColors.textOnAccent,
-        error: Colors.redAccent,
-        onError: Colors.white,
+        error: AppColors.error,
+        onError: AppColors.textPrimary,
         background: AppColors.bgMain,
         onBackground: AppColors.textPrimary,
         surface: AppColors.bgSurface,
@@ -155,14 +161,14 @@ class AppTheme {
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
           borderSide: const BorderSide(
-            color: Colors.redAccent,
+            color: AppColors.error,
             width: 1.0,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
           borderSide: const BorderSide(
-            color: Colors.redAccent,
+            color: AppColors.error,
             width: 2.0,
           ),
         ),

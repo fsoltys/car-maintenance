@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
 import 'widgets/vehicle_card.dart';
+import 'add_vehicle_screen.dart';
 
 class VehicleListScreen extends StatefulWidget {
   const VehicleListScreen({super.key});
@@ -93,8 +94,14 @@ class _VehicleListScreenState extends State<VehicleListScreen> {
                 : _buildContent(),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Navigate to add vehicle screen
+        onPressed: () async {
+          final result = await Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
+          );
+          // Reload vehicles if a new one was added
+          if (result == true) {
+            _loadVehicles();
+          }
         },
         backgroundColor: AppColors.accentPrimary,
         child: const Icon(Icons.add),

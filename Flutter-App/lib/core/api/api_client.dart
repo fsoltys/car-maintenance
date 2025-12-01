@@ -135,6 +135,35 @@ class ApiClient {
       );
     }
   }
+
+  Future<dynamic> put(
+    String endpoint, {
+    dynamic body,
+    Map<String, String>? headers,
+    bool includeAuth = true,
+  }) async {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final finalHeaders = await _buildHeaders(
+      headers: headers,
+      includeAuth: includeAuth,
+    );
+    
+    final response = await http.put(
+      uri,
+      headers: finalHeaders,
+      body: body != null ? jsonEncode(body) : null,
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body);
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: error['detail'] ?? 'An error occurred',
+      );
+    }
+  }
 }
 
 class ApiException implements Exception {

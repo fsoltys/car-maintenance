@@ -600,6 +600,111 @@ def get_vehicle_fuels(
         for row in rows
     ]
 
+@router.post(
+    "/{vehicle_id}/fuels",
+    response_model=List[VehicleFuelConfigItem],
+    status_code=status.HTTP_201_CREATED,
+)
+def add_vehicle_fuels(
+    vehicle_id: UUID,
+    payload: List[VehicleFuelConfigItem],
+    db: Session = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id),
+) -> list[VehicleFuelConfigItem]:
+    """
+    Dodanie/aktualizacja konfiguracji paliw pojazdu.
+    
+    - body: lista obiektów { fuel, is_primary }
+    - używane przy tworzeniu pojazdu lub dodawaniu nowych paliw
+    """
+
+    # Sprawdzamy czy pojazd istnieje i czy user ma do niego dostęp
+    existing = db.execute(
+        text("SELECT * FROM car_app.fn_get_vehicle(:user_id, :vehicle_id)"),
+        {"user_id": current_user_id, "vehicle_id": vehicle_id},
+    ).mappings().first()
+
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vehicle not found or no permission",
+        )
+
+    config = [item.model_dump() for item in payload]
+
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT * FROM car_app.fn_add_vehicle_fuels(
+                    :vehicle_id,
+                    :config::jsonb
+                )
+                """
+            ),
+            {
+                "vehicle_id": vehicle_id,
+                "config": json.dumps(config),
+            },
+        ).mappings().all()
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+
+        if pgcode == "23505":
+            detail = "Duplicate fuel configuration."
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=detail,
+            ) from exc
+
+        if pgcode in ("23502", "23514", "23503"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid fuel configuration or constraint violation.",
+            ) from exc
+
+        if pgcode == "40001":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Transaction conflict, please retry.",
+            ) from exc
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid fuel configuration or constraint violation.",
+        ) from exc
+
+    except DataError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid input data.",
+        ) from exc
+
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while adding vehicle fuels.",
+        ) from exc
+
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected server error.",
+        ) from exc
+
+    return [
+        VehicleFuelConfigItem(
+            fuel=row["fuel"],
+            is_primary=row["is_primary"],
+        )
+        for row in rows
+    ]
+
 @router.put(
     "/{vehicle_id}/fuels",
     response_model=List[VehicleFuelConfigItem],

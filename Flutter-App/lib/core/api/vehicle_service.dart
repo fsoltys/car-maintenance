@@ -44,6 +44,45 @@ class VehicleService {
   Future<void> deleteVehicle(String vehicleId) async {
     await _apiClient.delete('/vehicles/$vehicleId');
   }
+
+  /// Add vehicle fuels configuration (POST - for new vehicles)
+  Future<List<VehicleFuelConfig>> addVehicleFuels(
+    String vehicleId,
+    List<VehicleFuelConfig> fuels,
+  ) async {
+    final response = await _apiClient.post(
+      '/vehicles/$vehicleId/fuels',
+      body: fuels.map((f) => f.toJson()).toList(),
+    );
+    if (response is List) {
+      return response.map((json) => VehicleFuelConfig.fromJson(json as Map<String, dynamic>)).toList();
+    }
+    return [];
+  }
+}
+
+class VehicleFuelConfig {
+  final String fuel; // Use string value from API
+  final bool isPrimary;
+
+  VehicleFuelConfig({
+    required this.fuel,
+    required this.isPrimary,
+  });
+
+  factory VehicleFuelConfig.fromJson(Map<String, dynamic> json) {
+    return VehicleFuelConfig(
+      fuel: json['fuel'] as String,
+      isPrimary: json['is_primary'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'fuel': fuel,
+      'is_primary': isPrimary,
+    };
+  }
 }
 
 class Vehicle {
