@@ -12,13 +12,6 @@ BEGIN
         );
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'unit_system') THEN
-        CREATE TYPE unit_system AS ENUM (
-            'METRIC',
-            'IMPERIAL'
-        );
-    END IF;
-
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'driving_cycle') THEN
         CREATE TYPE driving_cycle AS ENUM (
             'CITY',

@@ -42,20 +42,6 @@ class TokenPayload(BaseModel):
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
-class UnitSystem(str, Enum):
-    METRIC = "METRIC"
-    IMPERIAL = "IMPERIAL"
-
-class UserSettingsOut(BaseModel):
-    unit_pref: UnitSystem
-    currency: str | None = Field(default=None, max_length=3, min_length=3)
-    timezone: str | None = None
-
-
-class UserSettingsUpdate(BaseModel):
-    unit_pref: UnitSystem
-    currency: str | None = Field(default=None, max_length=3, min_length=3)
-    timezone: str | None = None
 
 class UserProfileUpdate(BaseModel):
     display_name: str | None = Field(default=None, max_length=120)
