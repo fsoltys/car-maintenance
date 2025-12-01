@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import '../auth/auth_storage.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://localhost:8000';
+  // Use 10.0.2.2 for Android emulator, localhost for iOS simulator
+  static const String baseUrl = 'http://10.0.2.2:8000';
   final AuthStorage _authStorage = AuthStorage();
 
   Future<Map<String, String>> _buildHeaders({
@@ -54,7 +55,7 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> get(
+  Future<dynamic> get(
     String endpoint, {
     Map<String, String>? headers,
     bool includeAuth = true,
@@ -71,7 +72,7 @@ class ApiClient {
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      return jsonDecode(response.body);
     } else {
       final error = jsonDecode(response.body);
       throw ApiException(

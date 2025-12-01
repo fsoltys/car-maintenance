@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../core/auth/session_manager.dart';
+import 'signup_screen.dart';
+import '../vehicles/vehicle_list_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,11 +49,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
         
-        // Debug: Print tokens (remove in production!)
-        final accessToken = await _sessionManager.getAccessToken();
-        print('Access token saved: ${accessToken?.substring(0, 20)}...');
-        
-        // TODO: Navigate to main app screen
+        // Navigate to vehicle list screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const VehicleListScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -163,7 +164,11 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                    );
+                  },
                   child: const Text('CREATE AN ACCOUNT'),
                 ),
               ),
