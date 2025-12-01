@@ -78,7 +78,7 @@ def create_issue(
     try:
         row = db.execute(
             text(
-                "SELECT * FROM car_app.fn_create_issue(:user_id, :vehicle_id, :title, :description, :priority, :status, :error_codes::jsonb)"
+                "SELECT * FROM car_app.fn_create_issue(:user_id, :vehicle_id, CAST(:title AS TEXT), CAST(:description AS TEXT), CAST(:priority AS TEXT), CAST(:status AS TEXT), CAST(:error_codes AS TEXT))"
             ),
             params,
         ).mappings().first()

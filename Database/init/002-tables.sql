@@ -143,7 +143,14 @@ CREATE TABLE IF NOT EXISTS vehicles (
     purchase_date           DATE,
     last_inspection_date    DATE,
     created_at              TIMESTAMPTZ,
-    updated_at              TIMESTAMPTZ
+    updated_at              TIMESTAMPTZ,
+    CONSTRAINT chk_production_year CHECK (production_year IS NULL OR (production_year >= 1900 AND production_year <= 2100)),
+    CONSTRAINT chk_tank_capacity CHECK (tank_capacity_l IS NULL OR tank_capacity_l > 0),
+    CONSTRAINT chk_secondary_tank_capacity CHECK (secondary_tank_capacity IS NULL OR secondary_tank_capacity > 0),
+    CONSTRAINT chk_battery_capacity CHECK (battery_capacity_kwh IS NULL OR battery_capacity_kwh > 0),
+    CONSTRAINT chk_initial_odometer CHECK (initial_odometer_km IS NULL OR initial_odometer_km >= 0),
+    CONSTRAINT chk_purchase_price CHECK (purchase_price IS NULL OR purchase_price >= 0),
+    CONSTRAINT chk_secondary_requires_dual CHECK (secondary_tank_capacity IS NULL OR dual_tank = TRUE)
 );
 
 CREATE INDEX IF NOT EXISTS idx_vehicles_owner_id
@@ -182,7 +189,10 @@ CREATE TABLE IF NOT EXISTS fuelings (
     fuel_level_after  NUMERIC(5,2),  -- Tank level after fueling (0-100%)
     created_at      TIMESTAMPTZ,
     CONSTRAINT chk_fuel_level_before_range CHECK (fuel_level_before IS NULL OR (fuel_level_before >= 0 AND fuel_level_before <= 100)),
-    CONSTRAINT chk_fuel_level_after_range CHECK (fuel_level_after IS NULL OR (fuel_level_after >= 0 AND fuel_level_after <= 100))
+    CONSTRAINT chk_fuel_level_after_range CHECK (fuel_level_after IS NULL OR (fuel_level_after >= 0 AND fuel_level_after <= 100)),
+    CONSTRAINT chk_price_per_unit_positive CHECK (price_per_unit > 0),
+    CONSTRAINT chk_volume_positive CHECK (volume > 0),
+    CONSTRAINT chk_odometer_positive CHECK (odometer_km >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_fuelings_vehicle_filled_at
@@ -206,7 +216,9 @@ CREATE TABLE IF NOT EXISTS services (
     total_cost      NUMERIC(12,2),
     reference       VARCHAR(64),
     note            TEXT,
-    created_at      TIMESTAMPTZ
+    created_at      TIMESTAMPTZ,
+    CONSTRAINT chk_service_odometer CHECK (odometer_km IS NULL OR odometer_km >= 0),
+    CONSTRAINT chk_service_cost CHECK (total_cost IS NULL OR total_cost >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_services_vehicle_service_date
@@ -217,11 +229,13 @@ CREATE INDEX IF NOT EXISTS idx_services_vehicle_odometer_km
 
 CREATE TABLE IF NOT EXISTS service_items (
     id              UUID PRIMARY KEY,
-    service_id      UUID NOT NULL REFERENCES services(id),
+    service_id      UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     part_name       VARCHAR(160),
     part_number     VARCHAR(80),
     quantity        NUMERIC(10,2),
-    unit_price      NUMERIC(12,2)
+    unit_price      NUMERIC(12,2),
+    CONSTRAINT chk_service_item_quantity CHECK (quantity IS NULL OR quantity > 0),
+    CONSTRAINT chk_service_item_price CHECK (unit_price IS NULL OR unit_price >= 0)
 );
 
 -- Issues / TODOs
@@ -236,7 +250,8 @@ CREATE TABLE IF NOT EXISTS issues (
     created_by      UUID NOT NULL REFERENCES users(id),
     created_at      TIMESTAMPTZ,
     closed_at       TIMESTAMPTZ,
-    error_codes     VARCHAR(255)
+    error_codes     VARCHAR(255),
+    CONSTRAINT chk_closed_after_created CHECK (closed_at IS NULL OR created_at IS NULL OR closed_at >= created_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_issues_vehicle_status
@@ -257,7 +272,9 @@ CREATE TABLE IF NOT EXISTS documents (
     valid_from      DATE,
     valid_to        DATE,
     note            TEXT,
-    created_at      TIMESTAMPTZ
+    created_at      TIMESTAMPTZ,
+    CONSTRAINT chk_doc_valid_period CHECK (valid_from IS NULL OR valid_to IS NULL OR valid_from <= valid_to),
+    CONSTRAINT chk_doc_issue_before_valid CHECK (issue_date IS NULL OR valid_from IS NULL OR issue_date <= valid_from)
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_vehicle_doc_type
@@ -273,7 +290,8 @@ CREATE TABLE IF NOT EXISTS odometer_entries (
     vehicle_id      UUID NOT NULL REFERENCES vehicles(id),
     entry_date      TIMESTAMPTZ NOT NULL,
     value_km        NUMERIC(10,1) NOT NULL,
-    note            TEXT
+    note            TEXT,
+    CONSTRAINT chk_odometer_value CHECK (value_km >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_odo_entries_vehicle_entry_date
@@ -293,7 +311,9 @@ CREATE TABLE IF NOT EXISTS expenses (
     amount          NUMERIC(12,2) NOT NULL,
     vat_rate        NUMERIC(5,2),
     note            TEXT,
-    created_at      TIMESTAMPTZ
+    created_at      TIMESTAMPTZ,
+    CONSTRAINT chk_expense_amount CHECK (amount > 0),
+    CONSTRAINT chk_vat_rate CHECK (vat_rate IS NULL OR (vat_rate >= 0 AND vat_rate <= 100))
 );
 
 CREATE INDEX IF NOT EXISTS idx_expenses_vehicle_expense_date
@@ -320,7 +340,12 @@ CREATE TABLE IF NOT EXISTS reminder_rules (
     status                  reminder_status NOT NULL DEFAULT 'ACTIVE',
     auto_reset_on_service   BOOLEAN DEFAULT FALSE,
     created_at              TIMESTAMPTZ,
-    updated_at              TIMESTAMPTZ
+    updated_at              TIMESTAMPTZ,
+    CONSTRAINT chk_reminder_has_due_condition CHECK (due_every_days IS NOT NULL OR due_every_km IS NOT NULL),
+    CONSTRAINT chk_reminder_days CHECK (due_every_days IS NULL OR due_every_days > 0),
+    CONSTRAINT chk_reminder_km CHECK (due_every_km IS NULL OR due_every_km > 0),
+    CONSTRAINT chk_reminder_last_reset_odometer CHECK (last_reset_odometer_km IS NULL OR last_reset_odometer_km >= 0),
+    CONSTRAINT chk_reminder_next_due_odometer CHECK (next_due_odometer_km IS NULL OR next_due_odometer_km >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_reminder_rules_vehicle_status
@@ -337,8 +362,9 @@ COMMENT ON TABLE reminder_rules IS
 
 CREATE TABLE IF NOT EXISTS reminder_events (
     id              UUID PRIMARY KEY,
-    rule_id         UUID NOT NULL REFERENCES reminder_rules(id),
+    rule_id         UUID NOT NULL REFERENCES reminder_rules(id) ON DELETE CASCADE,
     triggered_at    TIMESTAMPTZ NOT NULL,
     odometer_km     NUMERIC(10,1),
-    reason          VARCHAR(64)
+    reason          VARCHAR(64),
+    CONSTRAINT chk_reminder_event_odometer CHECK (odometer_km IS NULL OR odometer_km >= 0)
 );

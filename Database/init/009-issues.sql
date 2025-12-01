@@ -65,13 +65,13 @@ RETURNS TABLE (
     id uuid,
     vehicle_id uuid,
     created_by uuid,
-    title text,
+    title varchar(160),
     description text,
     priority issue_priority,
     status issue_status,
     created_at timestamptz,
     closed_at timestamptz,
-    error_codes varchar
+    error_codes varchar(255)
 )
 LANGUAGE plpgsql
 AS $$

@@ -33,3 +33,6 @@ Flutter-App/linux/
 Flutter-App/macos/
 Flutter-App/windows/
 Flutter-App/pubspec.lock
+
+# dev scripts
+scripts/

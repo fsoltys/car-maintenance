@@ -59,7 +59,7 @@ def create_expense(
     try:
         row = db.execute(
             text(
-                "SELECT * FROM car_app.fn_create_expense(:p_user_id, :p_vehicle_id, :p_expense_date, :p_category, :p_amount, :p_vat_rate, :p_note)"
+                "SELECT * FROM car_app.fn_create_expense(:p_user_id, :p_vehicle_id, :p_expense_date, CAST(:p_category AS TEXT), CAST(:p_amount AS NUMERIC(12,2)), CAST(:p_vat_rate AS NUMERIC), CAST(:p_note AS TEXT))"
             ),
             params,
         ).mappings().first()
