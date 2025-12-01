@@ -8,9 +8,7 @@ class FuelingService {
 
   /// Get all fuelings for a vehicle
   Future<List<Fueling>> getFuelings(String vehicleId) async {
-    final response = await _apiClient.get(
-      '/fuelings/vehicles/$vehicleId/fuelings',
-    );
+    final response = await _apiClient.get('/vehicles/$vehicleId/fuelings');
     if (response is List) {
       return response
           .map((json) => Fueling.fromJson(json as Map<String, dynamic>))
@@ -34,7 +32,7 @@ class FuelingService {
     }
 
     final uri = Uri.parse(
-      '/fuelings/vehicles/$vehicleId/fuelings',
+      '/vehicles/$vehicleId/fuelings',
     ).replace(queryParameters: queryParams);
 
     final response = await _apiClient.get(uri.toString());
@@ -48,14 +46,14 @@ class FuelingService {
 
   /// Get a single fueling by ID
   Future<Fueling> getFueling(String fuelingId) async {
-    final response = await _apiClient.get('/fuelings/fuelings/$fuelingId');
+    final response = await _apiClient.get('/fuelings/$fuelingId');
     return Fueling.fromJson(response as Map<String, dynamic>);
   }
 
   /// Create a new fueling
   Future<Fueling> createFueling(String vehicleId, FuelingCreate fueling) async {
     final response = await _apiClient.post(
-      '/fuelings/vehicles/$vehicleId/fuelings',
+      '/vehicles/$vehicleId/fuelings',
       body: fueling.toJson(),
     );
     return Fueling.fromJson(response);
@@ -64,7 +62,7 @@ class FuelingService {
   /// Update a fueling
   Future<Fueling> updateFueling(String fuelingId, FuelingUpdate fueling) async {
     final response = await _apiClient.patch(
-      '/fuelings/fuelings/$fuelingId',
+      '/fuelings/$fuelingId',
       body: fueling.toJson(),
     );
     return Fueling.fromJson(response);
@@ -72,7 +70,7 @@ class FuelingService {
 
   /// Delete a fueling
   Future<void> deleteFueling(String fuelingId) async {
-    await _apiClient.delete('/fuelings/fuelings/$fuelingId');
+    await _apiClient.delete('/fuelings/$fuelingId');
   }
 }
 

@@ -18,6 +18,8 @@ RETURNS TABLE (
     driving_cycle   driving_cycle,
     fuel            fuel_type,
     note            text,
+    fuel_level_before numeric(5,2),
+    fuel_level_after  numeric(5,2),
     created_at      timestamptz
 )
 LANGUAGE plpgsql
@@ -49,6 +51,8 @@ BEGIN
         f.driving_cycle,
         f.fuel,
         f.note,
+        f.fuel_level_before,
+        f.fuel_level_after,
         f.created_at
     FROM fuelings f
     WHERE f.vehicle_id = p_vehicle_id
@@ -76,6 +80,8 @@ RETURNS TABLE (
     driving_cycle   driving_cycle,
     fuel            fuel_type,
     note            text,
+    fuel_level_before numeric(5,2),
+    fuel_level_after  numeric(5,2),
     created_at      timestamptz
 )
 LANGUAGE plpgsql
@@ -107,6 +113,8 @@ BEGIN
         f.driving_cycle,
         f.fuel,
         f.note,
+        f.fuel_level_before,
+        f.fuel_level_after,
         f.created_at
     FROM fuelings f
     WHERE f.vehicle_id = p_vehicle_id
@@ -134,6 +142,8 @@ RETURNS TABLE (
     driving_cycle   driving_cycle,
     fuel            fuel_type,
     note            text,
+    fuel_level_before numeric(5,2),
+    fuel_level_after  numeric(5,2),
     created_at      timestamptz
 )
 LANGUAGE sql
@@ -150,6 +160,8 @@ AS $$
         f.driving_cycle,
         f.fuel,
         f.note,
+        f.fuel_level_before,
+        f.fuel_level_after,
         f.created_at
     FROM fuelings f
     JOIN vehicles v

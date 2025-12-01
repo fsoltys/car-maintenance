@@ -4,46 +4,72 @@ import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
 import '../../core/api/fueling_service.dart';
 
-class AddFuelingScreen extends StatefulWidget {
+class EditFuelingScreen extends StatefulWidget {
   final Vehicle vehicle;
+  final Fueling fueling;
 
-  const AddFuelingScreen({super.key, required this.vehicle});
+  const EditFuelingScreen({
+    super.key,
+    required this.vehicle,
+    required this.fueling,
+  });
 
   @override
-  State<AddFuelingScreen> createState() => _AddFuelingScreenState();
+  State<EditFuelingScreen> createState() => _EditFuelingScreenState();
 }
 
-class _AddFuelingScreenState extends State<AddFuelingScreen> {
+class _EditFuelingScreenState extends State<EditFuelingScreen> {
   final _formKey = GlobalKey<FormState>();
   final FuelingService _fuelingService = FuelingService();
   final VehicleService _vehicleService = VehicleService();
 
   // Form fields
-  DateTime _filledAt = DateTime.now();
+  late DateTime _filledAt;
   final TextEditingController _pricePerUnitController = TextEditingController();
   final TextEditingController _volumeController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
-  bool _fullTank = true;
-  DrivingCycle _drivingCycle = DrivingCycle.MIX;
-  FuelType _selectedFuel = FuelType.Petrol;
+  late bool _fullTank;
+  late DrivingCycle? _drivingCycle;
+  late FuelType _selectedFuel;
   final TextEditingController _noteController = TextEditingController();
 
   // Fuel level estimation
-  double _fuelLevelPercent = 50.0;
-  bool _skipFuelEstimate = false;
+  late double _fuelLevelPercent;
+  late bool _skipFuelEstimate;
 
   bool _isSubmitting = false;
+  bool _isDeleting = false;
   List<FuelType> _availableFuels = [];
 
   @override
   void initState() {
     super.initState();
     _loadAvailableFuels();
+    _populateFields();
+  }
+
+  void _populateFields() {
+    _filledAt = widget.fueling.filledAt;
+    _pricePerUnitController.text = widget.fueling.pricePerUnit.toString();
+    _volumeController.text = widget.fueling.volume.toString();
+    _odometerController.text = widget.fueling.odometerKm.toString();
+    _fullTank = widget.fueling.fullTank;
+    _drivingCycle = widget.fueling.drivingCycle;
+    _selectedFuel = widget.fueling.fuel;
+    _noteController.text = widget.fueling.note ?? '';
+
+    // Set fuel level from existing data
+    if (widget.fueling.fuelLevelBefore != null) {
+      _fuelLevelPercent = widget.fueling.fuelLevelBefore!;
+      _skipFuelEstimate = false;
+    } else {
+      _fuelLevelPercent = 50.0;
+      _skipFuelEstimate = true;
+    }
   }
 
   Future<void> _loadAvailableFuels() async {
     try {
-      // Fetch fuels from vehicle configuration
       final fuels = await _vehicleService.getVehicleFuels(widget.vehicle.id);
 
       if (fuels.isNotEmpty) {
@@ -51,18 +77,13 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
           _availableFuels = fuels
               .map((fuelConfig) => _parseFuelType(fuelConfig.fuel))
               .toList();
-          if (_availableFuels.isNotEmpty) {
-            _selectedFuel = _availableFuels.first;
-          }
         });
       } else {
-        // Fallback to all fuel types
         setState(() {
           _availableFuels = FuelType.values;
         });
       }
     } catch (e) {
-      // Fallback to all fuel types on error
       setState(() {
         _availableFuels = FuelType.values;
       });
@@ -123,26 +144,21 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
     });
 
     try {
-      // Calculate fuel levels based on user input
       double? fuelLevelBefore;
       double? fuelLevelAfter;
 
       if (_fullTank) {
-        // Full tank = 100%
         fuelLevelAfter = 100.0;
       } else if (!_skipFuelEstimate) {
-        // Partial tank with fuel level estimation
         fuelLevelBefore = _fuelLevelPercent;
-        // After = before + (volume / tankCapacity) * 100
         final tankCapacity = widget.vehicle.tankCapacityL ?? 50.0;
         fuelLevelAfter =
             _fuelLevelPercent +
             (double.parse(_volumeController.text) / tankCapacity * 100);
         if (fuelLevelAfter > 100) fuelLevelAfter = 100;
       }
-      // If _skipFuelEstimate is true, both remain null
 
-      final fueling = FuelingCreate(
+      final fueling = FuelingUpdate(
         filledAt: _filledAt,
         pricePerUnit: double.parse(_pricePerUnitController.text),
         volume: double.parse(_volumeController.text),
@@ -155,16 +171,16 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
         fuelLevelAfter: fuelLevelAfter,
       );
 
-      await _fuelingService.createFueling(widget.vehicle.id, fueling);
+      await _fuelingService.updateFueling(widget.fueling.id, fueling);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Fueling added successfully'),
+            content: Text('Fueling updated successfully'),
             backgroundColor: Color(0xFF4CAF50),
           ),
         );
-        Navigator.of(context).pop(true); // Return true to indicate success
+        Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -184,6 +200,64 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
     }
   }
 
+  Future<void> _deleteFueling() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Fueling'),
+        content: const Text(
+          'Are you sure you want to delete this fueling record?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isDeleting = true;
+    });
+
+    try {
+      await _fuelingService.deleteFueling(widget.fueling.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fueling deleted successfully'),
+            backgroundColor: Color(0xFF4CAF50),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,7 +270,13 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Add Fueling'),
+        title: const Text('Edit Fueling'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _isDeleting ? null : _deleteFueling,
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -628,7 +708,7 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
                 child: _isSubmitting
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                        'Add Fueling',
+                        'Update Fueling',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,

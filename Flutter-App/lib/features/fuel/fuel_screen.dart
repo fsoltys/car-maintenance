@@ -3,6 +3,7 @@ import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
 import '../../core/api/fueling_service.dart';
 import 'add_fueling_screen.dart';
+import 'edit_fueling_screen.dart';
 
 class FuelScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -18,6 +19,7 @@ class _FuelScreenState extends State<FuelScreen> {
   List<Fueling> _fuelings = [];
   bool _isLoading = true;
   String? _error;
+  bool _showingFullHistory = false;
 
   @override
   void initState() {
@@ -25,21 +27,28 @@ class _FuelScreenState extends State<FuelScreen> {
     _loadFuelings();
   }
 
-  Future<void> _loadFuelings() async {
+  Future<void> _loadFuelings({bool fullHistory = false}) async {
     setState(() {
       _isLoading = true;
       _error = null;
+      _showingFullHistory = fullHistory;
     });
 
     try {
-      // Get fuelings from the last 3 months
-      final now = DateTime.now();
-      final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+      final List<Fueling> fuelings;
 
-      final fuelings = await _fuelingService.getFuelingsInRange(
-        widget.vehicle.id,
-        fromDateTime: threeMonthsAgo,
-      );
+      if (fullHistory) {
+        // Load all fuelings (no date filter)
+        fuelings = await _fuelingService.getFuelings(widget.vehicle.id);
+      } else {
+        // Get fuelings from the last 3 months
+        final now = DateTime.now();
+        final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+        fuelings = await _fuelingService.getFuelingsInRange(
+          widget.vehicle.id,
+          fromDateTime: threeMonthsAgo,
+        );
+      }
 
       // Sort by date descending (newest first)
       fuelings.sort((a, b) => b.filledAt.compareTo(a.filledAt));
@@ -215,23 +224,43 @@ class _FuelScreenState extends State<FuelScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No fuelings yet',
+                    _showingFullHistory
+                        ? 'No fuelings yet'
+                        : 'No fuelings in last 3 months',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tap + to add your first fueling',
+                    _showingFullHistory
+                        ? 'Tap + to add your first fueling'
+                        : 'Tap + to add a fueling or view full history',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  if (!_showingFullHistory) ...[
+                    const SizedBox(height: 24),
+                    OutlinedButton.icon(
+                      onPressed: () => _loadFuelings(fullHistory: true),
+                      icon: const Icon(Icons.history),
+                      label: const Text('View Full History'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.accentSecondary,
+                        side: BorderSide(color: AppColors.accentSecondary),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             )
           : RefreshIndicator(
-              onRefresh: _loadFuelings,
+              onRefresh: () => _loadFuelings(fullHistory: _showingFullHistory),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: _fuelings.length + 1, // +1 for history button
@@ -241,21 +270,39 @@ class _FuelScreenState extends State<FuelScreen> {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Center(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            // TODO: Navigate to full history
-                          },
-                          icon: const Icon(Icons.history),
-                          label: const Text('View Full History'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.accentSecondary,
-                            side: BorderSide(color: AppColors.accentSecondary),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                          ),
-                        ),
+                        child: _showingFullHistory
+                            ? OutlinedButton.icon(
+                                onPressed: () =>
+                                    _loadFuelings(fullHistory: false),
+                                icon: const Icon(Icons.calendar_month),
+                                label: const Text('Show Last 3 Months'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.accentSecondary,
+                                  side: BorderSide(
+                                    color: AppColors.accentSecondary,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                ),
+                              )
+                            : OutlinedButton.icon(
+                                onPressed: () =>
+                                    _loadFuelings(fullHistory: true),
+                                icon: const Icon(Icons.history),
+                                label: const Text('View Full History'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.accentSecondary,
+                                  side: BorderSide(
+                                    color: AppColors.accentSecondary,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
                       ),
                     );
                   }
@@ -280,230 +327,249 @@ class _FuelScreenState extends State<FuelScreen> {
     Fueling fueling,
     Map<String, dynamic>? consumption,
   ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.accentPrimary.withOpacity(0.3),
-          width: 2,
+    return InkWell(
+      onTap: () async {
+        final result = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>
+                EditFuelingScreen(vehicle: widget.vehicle, fueling: fueling),
+          ),
+        );
+
+        if (result == true) {
+          _loadFuelings(fullHistory: _showingFullHistory);
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.accentPrimary.withOpacity(0.3),
+            width: 2,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row with date and fuel type
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _formatDate(fueling.filledAt),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.accentPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  fueling.fuel.name,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.accentPrimary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row with date and fuel type
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDate(fueling.filledAt),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Price info
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Price per unit',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${fueling.pricePerUnit.toStringAsFixed(2)} PLN/L',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Total price',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${fueling.totalPrice.toStringAsFixed(2)} PLN',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.accentPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Volume and odometer
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildInfoChip(
-                icon: Icons.local_gas_station,
-                label: 'Volume',
-                value: '${fueling.volume.toStringAsFixed(2)} L',
-              ),
-              _buildInfoChip(
-                icon: Icons.speed,
-                label: 'Odometer',
-                value: '${fueling.odometerKm.toStringAsFixed(1)} km',
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Driving cycle and full tank
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildInfoChip(
-                icon: _getDrivingCycleIcon(fueling.drivingCycle),
-                label: 'Driving cycle',
-                value: _formatDrivingCycle(fueling.drivingCycle),
-              ),
-              if (fueling.fullTank)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 8,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.accentPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: Color(0xFF4CAF50),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Full tank',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF4CAF50),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-
-          // Consumption
-          if (consumption != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.accentSecondary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    consumption['isEstimated']
-                        ? Icons.show_chart
-                        : Icons.analytics_outlined,
-                    color: AppColors.accentSecondary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${consumption['isEstimated'] ? '~' : ''}${(consumption['value'] as double).toStringAsFixed(2)} L/100km',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.accentSecondary,
+                  child: Text(
+                    fueling.fuel.name,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.accentPrimary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (consumption['isEstimated'])
-                    Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Tooltip(
-                        message: 'Estimated based on fuel level',
-                        child: Icon(
-                          Icons.info_outline,
-                          size: 14,
-                          color: AppColors.accentSecondary.withOpacity(0.7),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+            const SizedBox(height: 16),
 
-          // Note
-          if (fueling.note != null && fueling.note!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.textSecondary.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.note_outlined,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      fueling.note!,
+            // Price info
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Price per unit',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${fueling.pricePerUnit.toStringAsFixed(2)} PLN/L',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Total price',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${fueling.totalPrice.toStringAsFixed(2)} PLN',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accentPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+
+            // Volume and odometer
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildInfoChip(
+                  icon: Icons.local_gas_station,
+                  label: 'Volume',
+                  value: '${fueling.volume.toStringAsFixed(2)} L',
+                ),
+                SizedBox(width: 10),
+                _buildInfoChip(
+                  icon: Icons.speed,
+                  label: 'Odometer',
+                  value: '${fueling.odometerKm.toStringAsFixed(1)} km',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Driving cycle and full tank
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildInfoChip(
+                  icon: _getDrivingCycleIcon(fueling.drivingCycle),
+                  label: 'Driving cycle',
+                  value: _formatDrivingCycle(fueling.drivingCycle),
+                ),
+                SizedBox(width: 10),
+
+                if (fueling.fullTank)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Color(0xFF4CAF50),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Full tank',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: const Color(0xFF4CAF50),
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            // Consumption
+            if (consumption != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accentSecondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      consumption['isEstimated']
+                          ? Icons.show_chart
+                          : Icons.analytics_outlined,
+                      color: AppColors.accentSecondary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${consumption['isEstimated'] ? '~' : ''}${(consumption['value'] as double).toStringAsFixed(2)} L/100km',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.accentSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (consumption['isEstimated'])
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Tooltip(
+                          message: 'Estimated based on fuel level',
+                          child: Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: AppColors.accentSecondary.withOpacity(0.7),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Note
+            if (fueling.note != null && fueling.note!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.textSecondary.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.note_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        fueling.note!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -512,94 +578,46 @@ class _FuelScreenState extends State<FuelScreen> {
     Fueling fueling,
     Map<String, dynamic>? consumption,
   ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Date
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatDate(fueling.filledAt),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      fueling.fuel.name,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Total price
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${fueling.totalPrice.toStringAsFixed(2)} PLN',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.accentPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${fueling.volume.toStringAsFixed(1)} L',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Consumption
-              if (consumption != null)
+    return InkWell(
+      onTap: () async {
+        final result = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>
+                EditFuelingScreen(vehicle: widget.vehicle, fueling: fueling),
+          ),
+        );
+
+        if (result == true) {
+          _loadFuelings(fullHistory: _showingFullHistory);
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Date
                 Expanded(
                   flex: 2,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (consumption['isEstimated'])
-                            Text(
-                              '~',
-                              style: Theme.of(context).textTheme.bodyLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.accentSecondary,
-                                  ),
-                            ),
-                          Text(
-                            (consumption['value'] as double).toStringAsFixed(2),
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.accentSecondary,
-                                ),
-                          ),
-                        ],
+                      Text(
+                        _formatDate(fueling.filledAt),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'L/100km',
+                        fueling.fuel.name,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -607,9 +625,73 @@ class _FuelScreenState extends State<FuelScreen> {
                     ],
                   ),
                 ),
-            ],
-          ),
-        ],
+                // Total price
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${fueling.totalPrice.toStringAsFixed(2)} PLN',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accentPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${fueling.volume.toStringAsFixed(1)} L',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Consumption
+                if (consumption != null)
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (consumption['isEstimated'])
+                              Text(
+                                '~',
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.accentSecondary,
+                                    ),
+                              ),
+                            Text(
+                              (consumption['value'] as double).toStringAsFixed(
+                                2,
+                              ),
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.accentSecondary,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'L/100km',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

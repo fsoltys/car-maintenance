@@ -18,7 +18,7 @@ from app.api.vehicles.schemas import (
     FuelType,
 )
 
-router = APIRouter(prefix="/fuelings", tags=["fuelings"])
+router = APIRouter(tags=["fuelings"])
 
 
 @router.get(
