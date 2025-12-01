@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class OdometerEntryCreate(BaseModel):
@@ -35,3 +35,27 @@ class OdometerHistoryItem(BaseModel):
 
     class Config:
         from_attributes = True
+        # Use custom field names for JSON serialization
+        populate_by_name = True
+
+    @field_serializer('event_date')
+    def serialize_event_date(self, value: datetime, _info):
+        # Rename event_date to timestamp in JSON
+        return value
+
+    @field_serializer('event_type')
+    def serialize_event_type(self, value: str, _info):
+        # Convert to lowercase for JSON
+        return value.lower()
+
+    def model_dump(self, **kwargs):
+        """Custom serialization to match Flutter expectations"""
+        data = super().model_dump(**kwargs)
+        # Rename fields for Flutter
+        return {
+            'timestamp': data['event_date'],
+            'source': data['event_type'],  # Already lowercased by field_serializer
+            'source_id': str(data['source_id']),
+            'odometer_km': data['odometer_km'],
+        }
+

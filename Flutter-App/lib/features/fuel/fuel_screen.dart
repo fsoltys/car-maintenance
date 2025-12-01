@@ -77,10 +77,10 @@ class _FuelScreenState extends State<FuelScreen> {
 
     // Method 1: Full tank method (accurate)
     if (current.fullTank) {
-      // Find the previous full tank fueling
+      // Find the previous full tank fueling with SAME fuel type
       for (int i = currentIndex + 1; i < _fuelings.length; i++) {
         final previous = _fuelings[i];
-        if (previous.fullTank) {
+        if (previous.fullTank && previous.fuel.name == current.fuel.name) {
           final distanceKm = current.odometerKm - previous.odometerKm;
           if (distanceKm <= 0) return null;
 
@@ -101,11 +101,12 @@ class _FuelScreenState extends State<FuelScreen> {
       return null; // Need fuel level data
     }
 
-    // Find previous fueling with fuel level data
+    // Find previous fueling with fuel level data and SAME fuel type
     for (int i = currentIndex + 1; i < _fuelings.length; i++) {
       final previous = _fuelings[i];
 
-      if (previous.fuelLevelAfter != null) {
+      if (previous.fuelLevelAfter != null &&
+          previous.fuel.name == current.fuel.name) {
         final distanceKm = current.odometerKm - previous.odometerKm;
         if (distanceKm <= 0) return null;
 
@@ -495,48 +496,56 @@ class _FuelScreenState extends State<FuelScreen> {
             ),
 
             // Consumption
-            if (consumption != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.accentSecondary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      consumption['isEstimated']
-                          ? Icons.show_chart
-                          : Icons.analytics_outlined,
-                      color: AppColors.accentSecondary,
-                      size: 20,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: consumption != null
+                    ? AppColors.accentSecondary.withOpacity(0.1)
+                    : AppColors.textMuted.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    consumption != null
+                        ? (consumption['isEstimated']
+                              ? Icons.show_chart
+                              : Icons.analytics_outlined)
+                        : Icons.analytics_outlined,
+                    color: consumption != null
+                        ? AppColors.accentSecondary
+                        : AppColors.textMuted,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    consumption != null
+                        ? '${consumption['isEstimated'] ? '~' : ''}${(consumption['value'] as double).toStringAsFixed(2)} L/100km'
+                        : '-.-- L/100km',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: consumption != null
+                          ? AppColors.accentSecondary
+                          : AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${consumption['isEstimated'] ? '~' : ''}${(consumption['value'] as double).toStringAsFixed(2)} L/100km',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.accentSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (consumption['isEstimated'])
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Tooltip(
-                          message: 'Estimated based on fuel level',
-                          child: Icon(
-                            Icons.info_outline,
-                            size: 14,
-                            color: AppColors.accentSecondary.withOpacity(0.7),
-                          ),
+                  ),
+                  if (consumption != null && consumption['isEstimated'])
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Tooltip(
+                        message: 'Estimated based on fuel level',
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 14,
+                          color: AppColors.accentSecondary.withOpacity(0.7),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            ],
+            ),
 
             // Note
             if (fueling.note != null && fueling.note!.isNotEmpty) ...[
@@ -649,45 +658,48 @@ class _FuelScreenState extends State<FuelScreen> {
                   ),
                 ),
                 // Consumption
-                if (consumption != null)
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (consumption['isEstimated'])
-                              Text(
-                                '~',
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.accentSecondary,
-                                    ),
-                              ),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (consumption != null && consumption['isEstimated'])
                             Text(
-                              (consumption['value'] as double).toStringAsFixed(
-                                2,
-                              ),
+                              '~',
                               style: Theme.of(context).textTheme.bodyLarge
                                   ?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.accentSecondary,
                                   ),
                             ),
-                          ],
+                          Text(
+                            consumption != null
+                                ? (consumption['value'] as double)
+                                      .toStringAsFixed(2)
+                                : '-.--',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: consumption != null
+                                      ? AppColors.accentSecondary
+                                      : AppColors.textMuted,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'L/100km',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'L/100km',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
               ],
             ),
           ],

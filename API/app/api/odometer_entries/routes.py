@@ -108,20 +108,26 @@ def get_odometer_graph(
     Zwraca zaggregowane punkty przebiegu (fuelings, services, manual entries) do wykresu.
     Parametry `from_date` i `to_date` są opcjonalne.
     """
-    params = {
-        "actor_id": current_user_id,
-        "vehicle_id": vehicle_id,
-        "p_from": from_date,
-        "p_to": to_date,
-        "p_limit": limit,
-    }
-
     try:
         rows = db.execute(
             text(
-                "SELECT * FROM car_app.fn_get_vehicle_odometer_history(:actor_id, :vehicle_id, :p_from::timestamptz, :p_to::timestamptz, :p_limit)"
+                """
+                SELECT * FROM car_app.fn_get_vehicle_odometer_history(
+                    :actor_id,
+                    :vehicle_id,
+                    CAST(:p_from AS timestamptz),
+                    CAST(:p_to AS timestamptz),
+                    :p_limit
+                )
+                """
             ),
-            params,
+            {
+                "actor_id": current_user_id,
+                "vehicle_id": vehicle_id,
+                "p_from": from_date,
+                "p_to": to_date,
+                "p_limit": limit,
+            },
         ).mappings().all()
     except DBAPIError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Database error while fetching odometer history.") from exc

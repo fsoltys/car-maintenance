@@ -35,7 +35,8 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
 
   // Fuel level estimation
   late double _fuelLevelPercent;
-  late bool _skipFuelEstimate;
+  late bool _isBeforeFueling;
+  bool _skipFuelEstimate = false;
 
   bool _isSubmitting = false;
   bool _isDeleting = false;
@@ -61,9 +62,16 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
     // Set fuel level from existing data
     if (widget.fueling.fuelLevelBefore != null) {
       _fuelLevelPercent = widget.fueling.fuelLevelBefore!;
+      _isBeforeFueling = true;
+      _skipFuelEstimate = false;
+    } else if (widget.fueling.fuelLevelAfter != null &&
+        !widget.fueling.fullTank) {
+      _fuelLevelPercent = widget.fueling.fuelLevelAfter!;
+      _isBeforeFueling = false;
       _skipFuelEstimate = false;
     } else {
       _fuelLevelPercent = 50.0;
+      _isBeforeFueling = true;
       _skipFuelEstimate = true;
     }
   }
@@ -150,13 +158,23 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
       if (_fullTank) {
         fuelLevelAfter = 100.0;
       } else if (!_skipFuelEstimate) {
-        fuelLevelBefore = _fuelLevelPercent;
         final tankCapacity = widget.vehicle.tankCapacityL ?? 50.0;
-        fuelLevelAfter =
-            _fuelLevelPercent +
-            (double.parse(_volumeController.text) / tankCapacity * 100);
-        if (fuelLevelAfter > 100) fuelLevelAfter = 100;
+
+        if (_isBeforeFueling) {
+          fuelLevelBefore = _fuelLevelPercent;
+          fuelLevelAfter =
+              _fuelLevelPercent +
+              (double.parse(_volumeController.text) / tankCapacity * 100);
+          if (fuelLevelAfter > 100) fuelLevelAfter = 100;
+        } else {
+          fuelLevelAfter = _fuelLevelPercent;
+          fuelLevelBefore =
+              _fuelLevelPercent -
+              (double.parse(_volumeController.text) / tankCapacity * 100);
+          if (fuelLevelBefore < 0) fuelLevelBefore = 0;
+        }
       }
+      // If _skipFuelEstimate is true, both remain null
 
       final fueling = FuelingUpdate(
         filledAt: _filledAt,
@@ -584,7 +602,9 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Before Fueling',
+                                  _isBeforeFueling
+                                      ? 'Before Fueling'
+                                      : 'After Fueling',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: _fuelLevelPercent > 50
@@ -598,6 +618,39 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
                           ),
                         ],
                       ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Before/After fueling toggle
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildToggleButton(
+                            label: 'Before Fueling',
+                            icon: Icons.trending_down,
+                            isSelected: _isBeforeFueling,
+                            onTap: () {
+                              setState(() {
+                                _isBeforeFueling = true;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildToggleButton(
+                            label: 'After Fueling',
+                            icon: Icons.trending_up,
+                            isSelected: !_isBeforeFueling,
+                            onTap: () {
+                              setState(() {
+                                _isBeforeFueling = false;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 16),
@@ -807,6 +860,55 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
                 color: isSelected
                     ? AppColors.accentPrimary
                     : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggleButton({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.textSecondary.withOpacity(0.1)
+              : AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.textSecondary
+                : AppColors.textSecondary.withOpacity(0.2),
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected
+                  ? AppColors.textSecondary
+                  : AppColors.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: isSelected
+                    ? AppColors.textSecondary
+                    : AppColors.textSecondary.withOpacity(0.5),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

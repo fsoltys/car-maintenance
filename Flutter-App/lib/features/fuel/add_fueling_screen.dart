@@ -30,6 +30,7 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
 
   // Fuel level estimation
   double _fuelLevelPercent = 50.0;
+  bool _isBeforeFueling = true; // true = before, false = after
   bool _skipFuelEstimate = false;
 
   bool _isSubmitting = false;
@@ -132,13 +133,25 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
         fuelLevelAfter = 100.0;
       } else if (!_skipFuelEstimate) {
         // Partial tank with fuel level estimation
-        fuelLevelBefore = _fuelLevelPercent;
-        // After = before + (volume / tankCapacity) * 100
         final tankCapacity = widget.vehicle.tankCapacityL ?? 50.0;
-        fuelLevelAfter =
-            _fuelLevelPercent +
-            (double.parse(_volumeController.text) / tankCapacity * 100);
-        if (fuelLevelAfter > 100) fuelLevelAfter = 100;
+
+        if (_isBeforeFueling) {
+          // User measured tank level BEFORE fueling
+          fuelLevelBefore = _fuelLevelPercent;
+          // After = before + (volume / tankCapacity) * 100
+          fuelLevelAfter =
+              _fuelLevelPercent +
+              (double.parse(_volumeController.text) / tankCapacity * 100);
+          if (fuelLevelAfter > 100) fuelLevelAfter = 100;
+        } else {
+          // User measured tank level AFTER fueling
+          fuelLevelAfter = _fuelLevelPercent;
+          // Before = after - (volume / tankCapacity) * 100
+          fuelLevelBefore =
+              _fuelLevelPercent -
+              (double.parse(_volumeController.text) / tankCapacity * 100);
+          if (fuelLevelBefore < 0) fuelLevelBefore = 0;
+        }
       }
       // If _skipFuelEstimate is true, both remain null
 
@@ -504,7 +517,9 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Before Fueling',
+                                  _isBeforeFueling
+                                      ? 'Before Fueling'
+                                      : 'After Fueling',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: _fuelLevelPercent > 50
@@ -518,6 +533,39 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
                           ),
                         ],
                       ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Before/After fueling toggle
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildToggleButton(
+                            label: 'Before Fueling',
+                            icon: Icons.trending_down,
+                            isSelected: _isBeforeFueling,
+                            onTap: () {
+                              setState(() {
+                                _isBeforeFueling = true;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildToggleButton(
+                            label: 'After Fueling',
+                            icon: Icons.trending_up,
+                            isSelected: !_isBeforeFueling,
+                            onTap: () {
+                              setState(() {
+                                _isBeforeFueling = false;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 16),
@@ -727,6 +775,55 @@ class _AddFuelingScreenState extends State<AddFuelingScreen> {
                 color: isSelected
                     ? AppColors.accentPrimary
                     : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggleButton({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.textSecondary.withOpacity(0.1)
+              : AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.textSecondary
+                : AppColors.textSecondary.withOpacity(0.2),
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected
+                  ? AppColors.textSecondary
+                  : AppColors.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: isSelected
+                    ? AppColors.textSecondary
+                    : AppColors.textSecondary.withOpacity(0.5),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

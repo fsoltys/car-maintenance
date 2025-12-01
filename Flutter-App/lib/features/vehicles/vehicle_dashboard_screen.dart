@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
+import '../../core/api/fueling_service.dart';
+import '../../core/api/odometer_service.dart';
 import '../fuel/fuel_screen.dart';
 
 class VehicleDashboardScreen extends StatefulWidget {
@@ -75,11 +77,7 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                       });
                     },
                     children: [
-                      _buildCarouselCard(
-                        title: 'Usage Overview',
-                        icon: Icons.speed,
-                        color: AppColors.accentSecondary,
-                      ),
+                      _buildUsageOverviewCard(),
                       _buildCarouselCard(
                         title: 'Cost Summary',
                         icon: Icons.attach_money,
@@ -202,6 +200,265 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
     );
   }
 
+  Widget _buildUsageOverviewCard() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadUsageOverviewData(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.bgSurface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: AppColors.textSecondary.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final data = snapshot.data ?? {};
+        final kmDriven = data['kmDriven'] ?? 0.0;
+        final fuelingsCount = data['fuelingsCount'] ?? 0;
+        final totalFuel = data['totalFuel'] ?? 0.0;
+        final avgConsumption = data['avgConsumption'];
+        final fuelsByType = data['fuelsByType'] as Map<String, double>? ?? {};
+        final consumptionByType =
+            data['consumptionByType'] as Map<String, double>? ?? {};
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.bgSurface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.textSecondary.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.accentSecondary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.speed,
+                  size: 48,
+                  color: AppColors.accentSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Usage Overview',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Last 3 months statistics',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Kilometers driven
+              _buildStatRow(
+                Icons.route,
+                'Kilometers Driven',
+                '${kmDriven.toStringAsFixed(0)} km',
+              ),
+              const SizedBox(height: 12),
+              // Fuelings count
+              _buildStatRow(
+                Icons.local_gas_station,
+                'Fuelings',
+                '$fuelingsCount',
+              ),
+              const SizedBox(height: 12),
+              // Total fuel
+              _buildStatRow(
+                Icons.water_drop_outlined,
+                'Total Fuel',
+                '${totalFuel.toStringAsFixed(1)} L',
+              ),
+              // Show fuel breakdown if multiple fuel types
+              if (fuelsByType.length > 1) ...[
+                const SizedBox(height: 8),
+                ...fuelsByType.entries.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          entry.key,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.textSecondary),
+                        ),
+                        Text(
+                          '${entry.value.toStringAsFixed(1)} L',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+              const SizedBox(height: 12),
+              // Average consumption
+              if (fuelsByType.length > 1 && consumptionByType.isNotEmpty) ...[
+                // Multi-fuel: show consumption per fuel type
+                ...consumptionByType.entries.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildStatRow(
+                      Icons.analytics_outlined,
+                      '${entry.key} Avg',
+                      '${entry.value.toStringAsFixed(2)} L/100km',
+                    ),
+                  );
+                }),
+              ] else ...[
+                // Single fuel: show overall consumption or placeholder
+                _buildStatRow(
+                  Icons.analytics_outlined,
+                  'Avg Consumption',
+                  avgConsumption != null
+                      ? '${avgConsumption.toStringAsFixed(2)} L/100km'
+                      : '-.--',
+                  valueColor: avgConsumption != null
+                      ? AppColors.accentSecondary
+                      : AppColors.textMuted,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.accentSecondary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: valueColor ?? AppColors.accentSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<Map<String, dynamic>> _loadUsageOverviewData() async {
+    try {
+      final now = DateTime.now();
+      final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+
+      // Load odometer data for km driven calculation
+      final odometerService = OdometerService();
+      final odometerData = await odometerService.getOdometerGraph(
+        widget.vehicle.id,
+        fromDate: threeMonthsAgo,
+      );
+
+      if (odometerData.isNotEmpty) {
+        for (var item in odometerData) {}
+      }
+
+      double kmDriven = 0.0;
+      if (odometerData.isNotEmpty) {
+        odometerData.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        final firstOdometer = odometerData.first.odometerKm;
+        final lastOdometer = odometerData.last.odometerKm;
+        kmDriven = lastOdometer - firstOdometer;
+      }
+
+      // Load fuelings data
+      final fuelingService = FuelingService();
+      final fuelings = await fuelingService.getFuelingsInRange(
+        widget.vehicle.id,
+        fromDateTime: threeMonthsAgo,
+      );
+
+      int fuelingsCount = fuelings.length;
+      double totalFuel = 0.0;
+      Map<String, double> fuelsByType = {};
+      Map<String, double> consumptionByType = {};
+
+      for (var fueling in fuelings) {
+        totalFuel += fueling.volume;
+        final fuelName = fueling.fuel.name;
+        fuelsByType[fuelName] = (fuelsByType[fuelName] ?? 0.0) + fueling.volume;
+      }
+
+      // Calculate average consumption per fuel type (L/100km)
+      if (kmDriven > 0 && fuelsByType.length > 1) {
+        // Multi-fuel vehicle - calculate consumption per fuel type
+        for (var entry in fuelsByType.entries) {
+          final fuelType = entry.key;
+          final fuelAmount = entry.value;
+          if (fuelAmount > 0) {
+            // For multi-fuel, we can't accurately determine km driven per fuel
+            // So we calculate proportional consumption based on fuel usage
+            final consumption = (fuelAmount / kmDriven) * 100;
+            consumptionByType[fuelType] = consumption;
+          }
+        }
+      }
+
+      // Calculate overall average consumption (L/100km)
+      double? avgConsumption;
+      if (kmDriven > 0 && totalFuel > 0) {
+        avgConsumption = (totalFuel / kmDriven) * 100;
+      }
+
+      return {
+        'kmDriven': kmDriven,
+        'fuelingsCount': fuelingsCount,
+        'totalFuel': totalFuel,
+        'avgConsumption': avgConsumption,
+        'fuelsByType': fuelsByType,
+        'consumptionByType': consumptionByType,
+      };
+    } catch (e, stackTrace) {
+      print('Error loading usage overview: $e');
+      print('Stack trace: $stackTrace');
+      return {};
+    }
+  }
+
   Widget _buildCarouselCard({
     required String title,
     required IconData icon,
@@ -241,9 +498,9 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
           Text(
             'Track your usage, costs and\nupcoming service reminders',
             textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 32),
           // Placeholder stats
