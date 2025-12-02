@@ -4,6 +4,7 @@ import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
 import '../../core/api/odometer_service.dart';
 import '../fuel/fuel_screen.dart';
+import '../services/services_screen.dart';
 import 'add_manual_entry_screen.dart';
 import 'odometer_chart_screen.dart';
 
@@ -102,9 +103,11 @@ class _OdometerEntriesScreenState extends State<OdometerEntriesScreen> {
         ),
       );
     } else if (source == 'service') {
-      // TODO: Navigate to service screen when implemented
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Service module coming soon')),
+      // Navigate to service screen
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ServicesScreen(vehicle: widget.vehicle),
+        ),
       );
     } else if (source == 'manual') {
       // Navigate to edit manual entry

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
 import '../../core/api/fueling_service.dart';
+import '../../core/api/meta_service.dart';
 
 class EditFuelingScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -22,6 +23,7 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
   final _formKey = GlobalKey<FormState>();
   final FuelingService _fuelingService = FuelingService();
   final VehicleService _vehicleService = VehicleService();
+  final MetaService _metaService = MetaService();
 
   // Form fields
   late DateTime _filledAt;
@@ -29,8 +31,8 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
   final TextEditingController _volumeController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
   late bool _fullTank;
-  late DrivingCycle? _drivingCycle;
-  late FuelType _selectedFuel;
+  late String? _drivingCycle;
+  late String? _selectedFuel;
   final TextEditingController _noteController = TextEditingController();
 
   // Fuel level estimation
@@ -40,13 +42,50 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
 
   bool _isSubmitting = false;
   bool _isDeleting = false;
-  List<FuelType> _availableFuels = [];
+  List<FuelTypeEnum> _availableFuels = [];
+  List<EnumItem> _drivingCycles = [];
 
   @override
   void initState() {
     super.initState();
-    _loadAvailableFuels();
     _populateFields();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await Future.wait([_loadAvailableFuels(), _loadDrivingCycles()]);
+  }
+
+  Future<void> _loadDrivingCycles() async {
+    try {
+      final cycles = await _metaService.getDrivingCycles();
+      setState(() {
+        _drivingCycles = cycles;
+      });
+    } catch (e) {
+      // Keep default
+    }
+  }
+
+  Future<void> _loadAvailableFuels() async {
+    try {
+      final fuels = await _vehicleService.getVehicleFuels(widget.vehicle.id);
+      final fuelTypes = await _metaService.getFuelTypes();
+
+      if (fuels.isNotEmpty) {
+        setState(() {
+          _availableFuels = fuelTypes
+              .where((ft) => fuels.any((f) => f.fuel == ft.value))
+              .toList();
+        });
+      } else {
+        setState(() {
+          _availableFuels = fuelTypes;
+        });
+      }
+    } catch (e) {
+      // Keep default
+    }
   }
 
   void _populateFields() {
@@ -74,35 +113,6 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
       _isBeforeFueling = true;
       _skipFuelEstimate = true;
     }
-  }
-
-  Future<void> _loadAvailableFuels() async {
-    try {
-      final fuels = await _vehicleService.getVehicleFuels(widget.vehicle.id);
-
-      if (fuels.isNotEmpty) {
-        setState(() {
-          _availableFuels = fuels
-              .map((fuelConfig) => _parseFuelType(fuelConfig.fuel))
-              .toList();
-        });
-      } else {
-        setState(() {
-          _availableFuels = FuelType.values;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _availableFuels = FuelType.values;
-      });
-    }
-  }
-
-  FuelType _parseFuelType(String fuelString) {
-    return FuelType.values.firstWhere(
-      (e) => e.name == fuelString,
-      orElse: () => FuelType.Petrol,
-    );
   }
 
   @override
@@ -357,7 +367,7 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<FuelType>(
+                  DropdownButtonFormField<String>(
                     value: _selectedFuel,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
@@ -368,8 +378,8 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
                     ),
                     items: _availableFuels.map((fuel) {
                       return DropdownMenuItem(
-                        value: fuel,
-                        child: Text(fuel.name),
+                        value: fuel.value,
+                        child: Text(fuel.label),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -707,31 +717,36 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
                   ),
                   const SizedBox(height: 12),
                   Row(
-                    children: [
-                      Expanded(
-                        child: _buildDrivingCycleButton(
-                          DrivingCycle.CITY,
-                          Icons.location_city,
-                          'City',
+                    children: _drivingCycles.map((cycle) {
+                      final isSelected = _drivingCycle == cycle.value;
+                      IconData icon;
+                      switch (cycle.value) {
+                        case 'CITY':
+                          icon = Icons.location_city;
+                          break;
+                        case 'HIGHWAY':
+                          icon = Icons.route;
+                          break;
+                        case 'MIX':
+                          icon = Icons.merge;
+                          break;
+                        default:
+                          icon = Icons.help_outline;
+                      }
+                      return Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: cycle != _drivingCycles.last ? 8 : 0,
+                          ),
+                          child: _buildDrivingCycleButton(
+                            cycle.value,
+                            icon,
+                            cycle.label,
+                            isSelected,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildDrivingCycleButton(
-                          DrivingCycle.HIGHWAY,
-                          Icons.route,
-                          'Highway',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildDrivingCycleButton(
-                          DrivingCycle.MIX,
-                          Icons.merge,
-                          'Mix',
-                        ),
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
@@ -760,12 +775,9 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
                 ),
                 child: _isSubmitting
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
+                    : Text(
                         'Update Fueling',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.labelLarge,
                       ),
               ),
             ),
@@ -819,16 +831,15 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
   }
 
   Widget _buildDrivingCycleButton(
-    DrivingCycle cycle,
+    String cycleValue,
     IconData icon,
     String label,
+    bool isSelected,
   ) {
-    final isSelected = _drivingCycle == cycle;
-
     return InkWell(
       onTap: () {
         setState(() {
-          _drivingCycle = cycle;
+          _drivingCycle = cycleValue;
         });
       },
       borderRadius: BorderRadius.circular(12),

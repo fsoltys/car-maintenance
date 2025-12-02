@@ -76,39 +76,6 @@ class FuelingService {
 
 // Models
 
-enum DrivingCycle {
-  CITY,
-  HIGHWAY,
-  MIX;
-
-  String toJson() => name;
-
-  static DrivingCycle fromJson(String value) {
-    return DrivingCycle.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => DrivingCycle.MIX,
-    );
-  }
-}
-
-enum FuelType {
-  Petrol,
-  Diesel,
-  LPG,
-  CNG,
-  EV,
-  H2;
-
-  String toJson() => name;
-
-  static FuelType fromJson(String value) {
-    return FuelType.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => FuelType.Petrol,
-    );
-  }
-}
-
 class Fueling {
   final String id;
   final String vehicleId;
@@ -118,8 +85,8 @@ class Fueling {
   final double volume;
   final double odometerKm;
   final bool fullTank;
-  final DrivingCycle? drivingCycle;
-  final FuelType fuel;
+  final String? drivingCycle;
+  final String fuel;
   final String? note;
   final DateTime? createdAt;
   final double? fuelLevelBefore; // Tank level before fueling (0-100%)
@@ -152,10 +119,8 @@ class Fueling {
       volume: (json['volume'] as num).toDouble(),
       odometerKm: (json['odometer_km'] as num).toDouble(),
       fullTank: json['full_tank'] as bool,
-      drivingCycle: json['driving_cycle'] != null
-          ? DrivingCycle.fromJson(json['driving_cycle'] as String)
-          : null,
-      fuel: FuelType.fromJson(json['fuel'] as String),
+      drivingCycle: json['driving_cycle'] as String?,
+      fuel: json['fuel'] as String,
       note: json['note'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -179,8 +144,8 @@ class Fueling {
       'volume': volume,
       'odometer_km': odometerKm,
       'full_tank': fullTank,
-      'driving_cycle': drivingCycle?.toJson(),
-      'fuel': fuel.toJson(),
+      'driving_cycle': drivingCycle,
+      'fuel': fuel,
       'note': note,
       'created_at': createdAt?.toIso8601String(),
       'fuel_level_before': fuelLevelBefore,
@@ -198,8 +163,8 @@ class FuelingCreate {
   final double volume;
   final double odometerKm;
   final bool fullTank;
-  final DrivingCycle? drivingCycle;
-  final FuelType fuel;
+  final String? drivingCycle;
+  final String fuel;
   final String? note;
   final double? fuelLevelBefore;
   final double? fuelLevelAfter;
@@ -224,8 +189,8 @@ class FuelingCreate {
       'volume': volume,
       'odometer_km': odometerKm,
       'full_tank': fullTank,
-      'driving_cycle': drivingCycle?.toJson(),
-      'fuel': fuel.toJson(),
+      'driving_cycle': drivingCycle,
+      'fuel': fuel,
       'note': note,
       'fuel_level_before': fuelLevelBefore,
       'fuel_level_after': fuelLevelAfter,
@@ -239,8 +204,8 @@ class FuelingUpdate {
   final double? volume;
   final double? odometerKm;
   final bool? fullTank;
-  final DrivingCycle? drivingCycle;
-  final FuelType? fuel;
+  final String? drivingCycle;
+  final String? fuel;
   final String? note;
   final double? fuelLevelBefore;
   final double? fuelLevelAfter;
@@ -265,8 +230,8 @@ class FuelingUpdate {
     if (volume != null) map['volume'] = volume;
     if (odometerKm != null) map['odometer_km'] = odometerKm;
     if (fullTank != null) map['full_tank'] = fullTank;
-    if (drivingCycle != null) map['driving_cycle'] = drivingCycle!.toJson();
-    if (fuel != null) map['fuel'] = fuel!.toJson();
+    if (drivingCycle != null) map['driving_cycle'] = drivingCycle;
+    if (fuel != null) map['fuel'] = fuel;
     if (note != null) map['note'] = note;
     if (fuelLevelBefore != null) map['fuel_level_before'] = fuelLevelBefore;
     if (fuelLevelAfter != null) map['fuel_level_after'] = fuelLevelAfter;

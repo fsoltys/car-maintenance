@@ -321,13 +321,13 @@ class _VehicleRoleSettingsScreenState extends State<VehicleRoleSettingsScreen> {
                                   ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'OWNER',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.accentSecondary,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.accentSecondary,
+                                      ),
                                 ),
                               )
                             else

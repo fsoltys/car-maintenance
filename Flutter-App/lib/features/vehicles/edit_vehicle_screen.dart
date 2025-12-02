@@ -616,13 +616,16 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                                             ),
                                             child: Text(
                                               'PRIMARY',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: isPrimary
-                                                    ? AppColors.textPrimary
-                                                    : AppColors.textSecondary,
-                                              ),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isPrimary
+                                                        ? AppColors.textPrimary
+                                                        : AppColors
+                                                              .textSecondary,
+                                                  ),
                                             ),
                                           ),
                                         ),

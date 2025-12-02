@@ -11,13 +11,13 @@ RETURNS TABLE (
     id uuid,
     vehicle_id uuid,
     created_by uuid,
-    title text,
+    title varchar(160),
     description text,
     priority issue_priority,
     status issue_status,
     created_at timestamptz,
     closed_at timestamptz,
-    error_codes varchar
+    error_codes varchar(255)
 )
 LANGUAGE plpgsql
 AS $$
@@ -113,13 +113,13 @@ RETURNS TABLE (
     id uuid,
     vehicle_id uuid,
     created_by uuid,
-    title text,
+    title varchar(160),
     description text,
     priority issue_priority,
     status issue_status,
     created_at timestamptz,
     closed_at timestamptz,
-    error_codes varchar
+    error_codes varchar(255)
 )
 LANGUAGE plpgsql
 AS $$
@@ -166,15 +166,15 @@ BEGIN
     END IF;
 
     UPDATE issues i SET
-        title = COALESCE(p_title, title),
-        description = COALESCE(p_description, description),
-        priority = COALESCE(p_priority::issue_priority, priority),
-        status = COALESCE(p_status::issue_status, status),
-        error_codes = COALESCE(p_error_codes, error_codes),
+        title = COALESCE(p_title, i.title),
+        description = COALESCE(p_description, i.description),
+        priority = COALESCE(p_priority::issue_priority, i.priority),
+        status = COALESCE(p_status::issue_status, i.status),
+        error_codes = COALESCE(p_error_codes, i.error_codes),
         closed_at = CASE
             WHEN p_status IS NOT NULL AND p_status::text IN ('DONE','CANCELLED') THEN now()
             WHEN p_status IS NOT NULL AND p_status::text = 'OPEN' THEN NULL
-            ELSE closed_at
+            ELSE i.closed_at
         END
     WHERE i.id = p_issue_id
     RETURNING * INTO v_row;

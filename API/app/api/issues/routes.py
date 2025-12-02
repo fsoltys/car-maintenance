@@ -45,13 +45,7 @@ def list_vehicle_issues(
             detail="Unexpected server error.",
         ) from exc
 
-    if not rows:
-        # brak dostępu albo brak pojazdu – celowo 404
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vehicle not found or no permission",
-        )
-
+    # Return empty list if no issues found (not a 404)
     return [IssueOut.model_validate(row) for row in rows]
 
 
@@ -129,7 +123,7 @@ def update_issue(
     try:
         row = db.execute(
             text(
-                "SELECT * FROM car_app.fn_update_issue(:user_id, :issue_id, :title, :description, :priority, :status, :error_codes::jsonb)"
+                "SELECT * FROM car_app.fn_update_issue(:user_id, :issue_id, :title, :description, :priority, :status, :error_codes)"
             ),
             params,
         ).mappings().first()

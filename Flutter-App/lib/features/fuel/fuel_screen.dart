@@ -80,7 +80,7 @@ class _FuelScreenState extends State<FuelScreen> {
       // Find the previous full tank fueling with SAME fuel type
       for (int i = currentIndex + 1; i < _fuelings.length; i++) {
         final previous = _fuelings[i];
-        if (previous.fullTank && previous.fuel.name == current.fuel.name) {
+        if (previous.fullTank && previous.fuel == current.fuel) {
           final distanceKm = current.odometerKm - previous.odometerKm;
           if (distanceKm <= 0) return null;
 
@@ -105,8 +105,7 @@ class _FuelScreenState extends State<FuelScreen> {
     for (int i = currentIndex + 1; i < _fuelings.length; i++) {
       final previous = _fuelings[i];
 
-      if (previous.fuelLevelAfter != null &&
-          previous.fuel.name == current.fuel.name) {
+      if (previous.fuelLevelAfter != null && previous.fuel == current.fuel) {
         final distanceKm = current.odometerKm - previous.odometerKm;
         if (distanceKm <= 0) return null;
 
@@ -132,27 +131,32 @@ class _FuelScreenState extends State<FuelScreen> {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
-  String _formatDrivingCycle(DrivingCycle? cycle) {
+  String _formatDrivingCycle(String? cycle) {
     if (cycle == null) return 'N/A';
+    // cycle is already the enum value like 'CITY', 'HIGHWAY', 'MIX'
     switch (cycle) {
-      case DrivingCycle.CITY:
+      case 'CITY':
         return 'City';
-      case DrivingCycle.HIGHWAY:
+      case 'HIGHWAY':
         return 'Highway';
-      case DrivingCycle.MIX:
+      case 'MIX':
         return 'Mix';
+      default:
+        return cycle;
     }
   }
 
-  IconData _getDrivingCycleIcon(DrivingCycle? cycle) {
+  IconData _getDrivingCycleIcon(String? cycle) {
     if (cycle == null) return Icons.help_outline;
     switch (cycle) {
-      case DrivingCycle.CITY:
+      case 'CITY':
         return Icons.location_city;
-      case DrivingCycle.HIGHWAY:
+      case 'HIGHWAY':
         return Icons.route;
-      case DrivingCycle.MIX:
+      case 'MIX':
         return Icons.merge;
+      default:
+        return Icons.help_outline;
     }
   }
 
@@ -376,7 +380,7 @@ class _FuelScreenState extends State<FuelScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    fueling.fuel.name,
+                    fueling.fuel,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.accentPrimary,
                       fontWeight: FontWeight.w600,
@@ -626,7 +630,7 @@ class _FuelScreenState extends State<FuelScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        fueling.fuel.name,
+                        fueling.fuel,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                         ),

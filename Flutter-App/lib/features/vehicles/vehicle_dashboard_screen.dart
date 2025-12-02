@@ -5,6 +5,8 @@ import '../../core/api/fueling_service.dart';
 import '../../core/api/odometer_service.dart';
 import '../fuel/fuel_screen.dart';
 import '../odometer/odometer_entries_screen.dart';
+import '../issues/issues_screen.dart';
+import '../services/services_screen.dart';
 
 class VehicleDashboardScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -134,14 +136,24 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                       icon: Icons.build,
                       label: 'Service',
                       onTap: () {
-                        // TODO: Navigate to service module
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ServicesScreen(vehicle: widget.vehicle),
+                          ),
+                        );
                       },
                     ),
                     _buildModuleButton(
                       icon: Icons.error_outline,
                       label: 'Issues',
                       onTap: () {
-                        // TODO: Navigate to issues module
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                IssuesScreen(vehicle: widget.vehicle),
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -401,7 +413,7 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
 
       for (var fueling in fuelings) {
         totalFuel += fueling.volume;
-        final fuelName = fueling.fuel.name;
+        final fuelName = fueling.fuel;
         fuelsByType[fuelName] = (fuelsByType[fuelName] ?? 0.0) + fueling.volume;
       }
 

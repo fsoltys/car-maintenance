@@ -56,9 +56,12 @@ class _AddManualEntryScreenState extends State<AddManualEntryScreen> {
     } catch (e) {
       setState(() => _isLoadingEntry = false);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load entry: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load entry: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
         Navigator.of(context).pop();
       }
     }
@@ -125,6 +128,57 @@ class _AddManualEntryScreenState extends State<AddManualEntryScreen> {
     }
   }
 
+  Future<void> _deleteEntry() async {
+    try {
+      await _odometerService.deleteOdometerEntry(widget.entryId!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Entry deleted successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete entry: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.bgSurface,
+        title: const Text('Delete Entry'),
+        content: const Text(
+          'Are you sure you want to delete this manual odometer entry?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deleteEntry();
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _saveEntry() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -162,6 +216,7 @@ class _AddManualEntryScreenState extends State<AddManualEntryScreen> {
                   ? 'Entry updated successfully'
                   : 'Entry added successfully',
             ),
+            backgroundColor: AppColors.success,
           ),
         );
         Navigator.of(context).pop();
@@ -169,9 +224,12 @@ class _AddManualEntryScreenState extends State<AddManualEntryScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to save entry: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save entry: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
@@ -192,6 +250,14 @@ class _AddManualEntryScreenState extends State<AddManualEntryScreen> {
           _isEditMode ? 'Edit Manual Entry' : 'Add Manual Entry',
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        actions: _isEditMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.delete, color: AppColors.error),
+                  onPressed: _showDeleteConfirmation,
+                ),
+              ]
+            : null,
       ),
       body: _isLoadingEntry
           ? const Center(child: CircularProgressIndicator())
@@ -356,10 +422,7 @@ class _AddManualEntryScreenState extends State<AddManualEntryScreen> {
                             )
                           : Text(
                               _isEditMode ? 'Update Entry' : 'Add Entry',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.labelLarge,
                             ),
                     ),
                   ],
