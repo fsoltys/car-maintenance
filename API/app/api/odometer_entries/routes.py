@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, DataError, DBAPIError
 
 from app.api.deps import get_db, get_current_user_id
-from .schemas import OdometerEntryCreate, OdometerEntryOut, OdometerHistoryItem
+from .schemas import OdometerEntryCreate, OdometerEntryUpdate, OdometerEntryOut, OdometerHistoryItem
 
 
 router = APIRouter(tags=["odometer_entries"])
@@ -93,6 +93,77 @@ def create_odometer_entry(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found or no permission")
 
     return OdometerEntryOut.model_validate(row)
+
+
+@router.patch("/odometer-entries/{entry_id}", response_model=OdometerEntryOut)
+def update_odometer_entry(
+    entry_id: UUID,
+    payload: OdometerEntryUpdate,
+    db: Session = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id),
+) -> OdometerEntryOut:
+    """
+    Aktualizuje ręczny wpis przebiegu.
+    """
+    params = {
+        "actor_id": current_user_id,
+        "entry_id": entry_id,
+        "entry_date": payload.entry_date,
+        "value_km": payload.value_km,
+        "note": payload.note,
+    }
+
+    try:
+        row = db.execute(
+            text(
+                "SELECT * FROM car_app.fn_update_odometer_entry(:actor_id, :entry_id, :entry_date, :value_km, :note)"
+            ),
+            params,
+        ).mappings().first()
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Constraint violation while updating entry.") from exc
+    except DataError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid input data.") from exc
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Database error while updating odometer entry.") from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected server error.") from exc
+
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Odometer entry not found or no permission")
+
+    return OdometerEntryOut.model_validate(row)
+
+
+@router.delete("/odometer-entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_odometer_entry(
+    entry_id: UUID,
+    db: Session = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id),
+) -> None:
+    """
+    Usuwa ręczny wpis przebiegu.
+    """
+    try:
+        result = db.execute(
+            text("SELECT car_app.fn_delete_odometer_entry(:actor_id, :entry_id)"),
+            {"actor_id": current_user_id, "entry_id": entry_id},
+        ).scalar()
+        db.commit()
+    except DBAPIError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Database error while deleting odometer entry.") from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected server error.") from exc
+
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Odometer entry not found or no permission")
 
 
 @router.get("/vehicles/{vehicle_id}/odometer-graph", response_model=List[OdometerHistoryItem])

@@ -13,6 +13,12 @@ class OdometerEntryCreate(BaseModel):
     note: str | None = None
 
 
+class OdometerEntryUpdate(BaseModel):
+    entry_date: datetime | None = None
+    value_km: float | None = Field(default=None, ge=0)
+    note: str | None = None
+
+
 class OdometerEntryOut(BaseModel):
     id: UUID
     vehicle_id: UUID

@@ -38,9 +38,86 @@ class OdometerService {
     }
     return [];
   }
+
+  /// Create a manual odometer entry
+  Future<OdometerEntry> createOdometerEntry(
+    String vehicleId,
+    DateTime entryDate,
+    double valueKm, {
+    String? note,
+  }) async {
+    final response = await _apiClient.post(
+      '/vehicles/$vehicleId/odometer-entries',
+      body: {
+        'entry_date': entryDate.toIso8601String(),
+        'value_km': valueKm,
+        if (note != null) 'note': note,
+      },
+    );
+    return OdometerEntry.fromJson(response as Map<String, dynamic>);
+  }
+
+  /// Update a manual odometer entry
+  Future<OdometerEntry> updateOdometerEntry(
+    String entryId, {
+    DateTime? entryDate,
+    double? valueKm,
+    String? note,
+  }) async {
+    final response = await _apiClient.patch(
+      '/odometer-entries/$entryId',
+      body: {
+        if (entryDate != null) 'entry_date': entryDate.toIso8601String(),
+        if (valueKm != null) 'value_km': valueKm,
+        if (note != null) 'note': note,
+      },
+    );
+    return OdometerEntry.fromJson(response as Map<String, dynamic>);
+  }
+
+  /// Delete a manual odometer entry
+  Future<void> deleteOdometerEntry(String entryId) async {
+    await _apiClient.delete('/odometer-entries/$entryId');
+  }
 }
 
 // Models
+
+class OdometerEntry {
+  final String id;
+  final String vehicleId;
+  final DateTime entryDate;
+  final double valueKm;
+  final String? note;
+
+  OdometerEntry({
+    required this.id,
+    required this.vehicleId,
+    required this.entryDate,
+    required this.valueKm,
+    this.note,
+  });
+
+  factory OdometerEntry.fromJson(Map<String, dynamic> json) {
+    return OdometerEntry(
+      id: json['id'] as String,
+      vehicleId: json['vehicle_id'] as String,
+      entryDate: DateTime.parse(json['entry_date'] as String),
+      valueKm: (json['value_km'] as num).toDouble(),
+      note: json['note'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'vehicle_id': vehicleId,
+      'entry_date': entryDate.toIso8601String(),
+      'value_km': valueKm,
+      'note': note,
+    };
+  }
+}
 
 class OdometerHistoryItem {
   final DateTime timestamp;

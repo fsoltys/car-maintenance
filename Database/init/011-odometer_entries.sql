@@ -75,6 +75,116 @@ END;
 $$;
 
 
+CREATE OR REPLACE FUNCTION car_app.fn_update_odometer_entry(
+    p_user_id uuid,
+    p_entry_id uuid,
+    p_entry_date timestamptz DEFAULT NULL,
+    p_value_km numeric DEFAULT NULL,
+    p_note text DEFAULT NULL
+)
+RETURNS TABLE (
+    id uuid,
+    vehicle_id uuid,
+    entry_date timestamptz,
+    value_km numeric,
+    note text
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_row odometer_entries%ROWTYPE;
+    v_owner uuid;
+    v_vehicle_id uuid;
+    v_allowed boolean := false;
+BEGIN
+    SELECT e.*
+    INTO v_row
+    FROM odometer_entries e
+    WHERE e.id = p_entry_id;
+
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+
+    v_vehicle_id := v_row.vehicle_id;
+
+    SELECT v.owner_id INTO v_owner FROM vehicles v WHERE v.id = v_vehicle_id;
+
+    IF v_owner = p_user_id THEN
+        v_allowed := true;
+    ELSE
+        IF EXISTS (
+            SELECT 1 FROM vehicle_shares s WHERE s.vehicle_id = v_vehicle_id AND s.user_id = p_user_id AND s.role IN ('OWNER','EDITOR')
+        ) THEN
+            v_allowed := true;
+        END IF;
+    END IF;
+
+    IF NOT v_allowed THEN
+        RETURN;
+    END IF;
+
+    UPDATE odometer_entries e SET
+        entry_date = COALESCE(p_entry_date, entry_date),
+        value_km = COALESCE(p_value_km, value_km),
+        note = COALESCE(p_note, note)
+    WHERE e.id = p_entry_id
+    RETURNING * INTO v_row;
+
+    RETURN QUERY SELECT v_row.id, v_row.vehicle_id, v_row.entry_date, v_row.value_km, v_row.note;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION car_app.fn_delete_odometer_entry(
+    p_user_id uuid,
+    p_entry_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_row odometer_entries%ROWTYPE;
+    v_vehicle_id uuid;
+    v_owner uuid;
+    v_deleted int;
+    v_allowed boolean := false;
+BEGIN
+    SELECT e.*
+    INTO v_row
+    FROM odometer_entries e
+    WHERE e.id = p_entry_id;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    v_vehicle_id := v_row.vehicle_id;
+
+    SELECT v.owner_id INTO v_owner FROM vehicles v WHERE v.id = v_vehicle_id;
+
+    IF v_owner = p_user_id THEN
+        v_allowed := true;
+    ELSE
+        IF EXISTS (
+            SELECT 1 FROM vehicle_shares s WHERE s.vehicle_id = v_vehicle_id AND s.user_id = p_user_id AND s.role IN ('OWNER','EDITOR')
+        ) THEN
+            v_allowed := true;
+        END IF;
+    END IF;
+
+    IF NOT v_allowed THEN
+        RETURN FALSE;
+    END IF;
+
+    DELETE FROM odometer_entries e WHERE e.id = p_entry_id;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+
+    RETURN v_deleted > 0;
+END;
+$$;
+
+
 CREATE OR REPLACE FUNCTION car_app.fn_get_vehicle_odometer_history(
     p_user_id uuid,
     p_vehicle_id uuid,

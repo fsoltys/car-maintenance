@@ -4,6 +4,7 @@ import '../../core/api/vehicle_service.dart';
 import '../../core/api/fueling_service.dart';
 import '../../core/api/odometer_service.dart';
 import '../fuel/fuel_screen.dart';
+import '../odometer/odometer_entries_screen.dart';
 
 class VehicleDashboardScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -51,14 +52,6 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
               ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              // TODO: Navigate to vehicle settings
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -112,18 +105,6 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                 ),
                 const SizedBox(height: 24),
                 // "Show all" button
-                TextButton(
-                  onPressed: () {
-                    // TODO: Navigate to detailed overview
-                  },
-                  child: Text(
-                    'Show all',
-                    style: TextStyle(
-                      color: AppColors.accentSecondary,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 16),
               ],
             ),
@@ -170,10 +151,15 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildModuleButton(
-                      icon: Icons.description_outlined,
-                      label: 'Documents',
+                      icon: Icons.speed_outlined,
+                      label: 'Odometer History',
                       onTap: () {
-                        // TODO: Navigate to documents module
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                OdometerEntriesScreen(vehicle: widget.vehicle),
+                          ),
+                        );
                       },
                     ),
                     _buildModuleButton(
@@ -250,7 +236,7 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.speed,
+                  Icons.directions_car_filled_outlined,
                   size: 48,
                   color: AppColors.accentSecondary,
                 ),
@@ -392,10 +378,6 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
         widget.vehicle.id,
         fromDate: threeMonthsAgo,
       );
-
-      if (odometerData.isNotEmpty) {
-        for (var item in odometerData) {}
-      }
 
       double kmDriven = 0.0;
       if (odometerData.isNotEmpty) {
