@@ -110,6 +110,31 @@ class Fueling {
   });
 
   factory Fueling.fromJson(Map<String, dynamic> json) {
+    // Handle fuel field - can be either String or Map (old FuelType object)
+    String fuelValue;
+    final fuelData = json['fuel'];
+    if (fuelData is String) {
+      fuelValue = fuelData;
+    } else if (fuelData is Map) {
+      // Old FuelType object format - extract the value
+      fuelValue = fuelData['value'] as String? ?? fuelData['name'] as String;
+    } else {
+      fuelValue = 'UNKNOWN';
+    }
+
+    // Handle drivingCycle field - can be either String or Map (old DrivingCycle object)
+    String? drivingCycleValue;
+    final cycleData = json['driving_cycle'];
+    if (cycleData == null) {
+      drivingCycleValue = null;
+    } else if (cycleData is String) {
+      drivingCycleValue = cycleData;
+    } else if (cycleData is Map) {
+      // Old DrivingCycle object format - extract the value
+      drivingCycleValue =
+          cycleData['value'] as String? ?? cycleData['name'] as String;
+    }
+
     return Fueling(
       id: json['id'] as String,
       vehicleId: json['vehicle_id'] as String,
@@ -119,8 +144,8 @@ class Fueling {
       volume: (json['volume'] as num).toDouble(),
       odometerKm: (json['odometer_km'] as num).toDouble(),
       fullTank: json['full_tank'] as bool,
-      drivingCycle: json['driving_cycle'] as String?,
-      fuel: json['fuel'] as String,
+      drivingCycle: drivingCycleValue,
+      fuel: fuelValue,
       note: json['note'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
