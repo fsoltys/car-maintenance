@@ -71,7 +71,7 @@ def create_odometer_entry(
     try:
         row = db.execute(
             text(
-                "SELECT * FROM car_app.fn_create_odometer_entry(:actor_id, :vehicle_id, :entry_date, :value_km, :note)"
+                "SELECT * FROM car_app.fn_create_odometer_entry(:actor_id, :vehicle_id, CAST(:entry_date AS timestamptz), CAST(:value_km AS numeric), :note)"
             ),
             params,
         ).mappings().first()
@@ -116,7 +116,7 @@ def update_odometer_entry(
     try:
         row = db.execute(
             text(
-                "SELECT * FROM car_app.fn_update_odometer_entry(:actor_id, :entry_id, :entry_date, :value_km, :note)"
+                "SELECT * FROM car_app.fn_update_odometer_entry(:actor_id, :entry_id, CAST(:entry_date AS timestamptz), CAST(:value_km AS numeric), :note)"
             ),
             params,
         ).mappings().first()
