@@ -316,7 +316,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         ),
         title: Text(
           _isEditMode ? 'Edit Service' : 'Add Service',
-          style: Theme.of(context).textTheme.titleLarge,
+          style: Theme.of(context).textTheme.labelLarge,
         ),
         actions: _isEditMode
             ? [
@@ -679,11 +679,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       )
                     : Text(
                         _isEditMode ? 'Update Service' : 'Add Service',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: AppColors.textOnAccent,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.labelLarge,
                       ),
               ),
             ],
