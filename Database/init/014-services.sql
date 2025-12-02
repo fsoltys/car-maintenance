@@ -297,7 +297,7 @@ DECLARE
     v_vehicle_id UUID;
     v_is_owner BOOLEAN;
     v_role role_type;
-    v_deleted BOOLEAN := FALSE;
+    v_deleted INTEGER := 0;
 BEGIN
     -- Get vehicle_id for this service
     SELECT s.vehicle_id INTO v_vehicle_id

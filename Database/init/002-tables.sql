@@ -287,6 +287,7 @@ CREATE TABLE IF NOT EXISTS reminder_rules (
     description             TEXT,
     category                VARCHAR(64),
     service_type            service_type,
+    is_recurring            BOOLEAN NOT NULL DEFAULT TRUE,
     due_every_days          INT,
     due_every_km            INT,
     last_reset_at           TIMESTAMPTZ,
@@ -314,7 +315,7 @@ CREATE INDEX IF NOT EXISTS idx_reminder_rules_vehicle_next_due_odo
     ON reminder_rules(vehicle_id, next_due_odometer_km);
 
 COMMENT ON TABLE reminder_rules IS
-    'Definicje przypomnień; jeśli service_type ustawione, reguła automatycznie resetuje się po serwisie tego typu.';
+    'Reminder definitions; if is_recurring=true, intervals represent "every X days/km"; if false, "due in X days/km" (one-time). Auto-reset applies only to recurring reminders.';
 
 CREATE TABLE IF NOT EXISTS reminder_events (
     id              UUID PRIMARY KEY,

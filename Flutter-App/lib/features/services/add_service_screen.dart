@@ -4,6 +4,7 @@ import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
 import '../../core/api/service_service.dart';
 import '../../core/api/meta_service.dart';
+import '../../core/api/reminder_service.dart';
 
 class AddServiceScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -19,6 +20,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final _formKey = GlobalKey<FormState>();
   final ServiceService _serviceService = ServiceService();
   final MetaService _metaService = MetaService();
+  final ReminderService _reminderService = ReminderService();
 
   final TextEditingController _odometerController = TextEditingController();
   final TextEditingController _totalCostController = TextEditingController();
@@ -243,6 +245,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         await _serviceService.setServiceItems(savedService.id, _items);
       }
 
+      // Check for matching reminders and prompt for renewal
+      if (!_isEditMode) {
+        await _checkAndPromptReminderRenewal(savedService);
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -266,6 +273,92 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _checkAndPromptReminderRenewal(Service service) async {
+    try {
+      // Get all reminders for this vehicle
+      final reminders = await _reminderService.getVehicleReminders(
+        widget.vehicle.id,
+      );
+
+      // Find reminders that match the service type AND have auto-reset enabled
+      final matchingReminders = reminders.where((reminder) {
+        // Only process reminders with auto-reset enabled
+        if (!reminder.autoResetOnService) {
+          return false;
+        }
+
+        // Match by service type
+        if (reminder.serviceType != null &&
+            reminder.serviceType == service.serviceType) {
+          return true;
+        }
+        return false;
+      }).toList();
+
+      if (matchingReminders.isEmpty || !mounted) {
+        return;
+      }
+
+      // Show prompt for each matching reminder
+      for (final reminder in matchingReminders) {
+        final shouldRenew = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Reminder Found'),
+            content: Text(
+              'You have a reminder set for "${reminder.name}". '
+              'Would you like to renew it based on this service?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('No'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentPrimary,
+                ),
+                child: const Text('Yes, Renew'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldRenew == true && mounted) {
+          try {
+            await _reminderService.renewReminder(
+              reminder.id,
+              reason: 'Service completed: ${service.serviceType}',
+              odometer: service.odometerKm,
+            );
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Reminder "${reminder.name}" renewed'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to renew reminder: $e'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Silently fail - don't interrupt the service creation flow
+      debugPrint('Error checking reminders: $e');
     }
   }
 

@@ -173,7 +173,7 @@ def renew_reminder(
 
     try:
         row = db.execute(
-            text("SELECT * FROM car_app.fn_trigger_reminder(:p_user_id, :p_rule_id, :p_reason, :p_odometer)"),
+            text("SELECT * FROM car_app.fn_trigger_reminder(:p_user_id, :p_rule_id, CAST(:p_reason AS VARCHAR), CAST(:p_odometer AS NUMERIC))"),
             params,
         ).mappings().first()
         db.commit()

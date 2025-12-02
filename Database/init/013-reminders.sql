@@ -2,6 +2,30 @@ SET search_path TO car_app, public;
 
 -- Functions for reminders (tables/types already declared in 002-tables.sql)
 
+-- Helper function to get the most recent odometer reading for a vehicle
+CREATE OR REPLACE FUNCTION car_app.fn_get_latest_odometer(
+	p_vehicle_id uuid
+)
+RETURNS numeric(10,1)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	v_latest_odometer numeric(10,1);
+BEGIN
+	-- Get the most recent odometer reading from services, fuelings, or odometer_entries
+	SELECT MAX(odometer_km) INTO v_latest_odometer
+	FROM (
+		SELECT odometer_km FROM services WHERE vehicle_id = p_vehicle_id AND odometer_km IS NOT NULL
+		UNION ALL
+		SELECT odometer_km FROM fuelings WHERE vehicle_id = p_vehicle_id AND odometer_km IS NOT NULL
+		UNION ALL
+		SELECT odometer_km FROM odometer_entries WHERE vehicle_id = p_vehicle_id
+	) combined_odometers;
+	
+	RETURN COALESCE(v_latest_odometer, 0);
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION car_app.fn_get_vehicle_reminder_rules(
 	p_user_id uuid,
 	p_vehicle_id uuid
@@ -73,7 +97,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
-DECLARE v_row reminder_rules%ROWTYPE; v_owner uuid;
+DECLARE v_row reminder_rules%ROWTYPE; v_owner uuid; v_current_odometer numeric(10,1);
 BEGIN
 	SELECT v.owner_id INTO v_owner FROM vehicles v WHERE v.id = p_vehicle_id;
 	IF v_owner IS NULL THEN RETURN; END IF;
@@ -81,8 +105,26 @@ BEGIN
 		IF NOT EXISTS (SELECT 1 FROM vehicle_shares s WHERE s.vehicle_id = p_vehicle_id AND s.user_id = p_user_id AND s.role IN ('OWNER','EDITOR')) THEN RETURN; END IF;
 	END IF;
 
+	-- Get current odometer reading
+	v_current_odometer := fn_get_latest_odometer(p_vehicle_id);
+
 	INSERT INTO reminder_rules (id, vehicle_id, name, description, category, service_type, due_every_days, due_every_km, next_due_date, next_due_odometer_km, status, auto_reset_on_service, created_at, updated_at)
-	VALUES (gen_random_uuid(), p_vehicle_id, p_name, p_description, p_category, p_service_type, p_due_every_days, p_due_every_km, CASE WHEN p_due_every_days IS NOT NULL THEN (now()::date + p_due_every_days) ELSE NULL END, NULL, 'ACTIVE', p_auto_reset, now(), now())
+	VALUES (
+		gen_random_uuid(), 
+		p_vehicle_id, 
+		p_name, 
+		p_description, 
+		p_category, 
+		p_service_type, 
+		p_due_every_days, 
+		p_due_every_km, 
+		CASE WHEN p_due_every_days IS NOT NULL THEN (now()::date + p_due_every_days) ELSE NULL END,
+		CASE WHEN p_due_every_km IS NOT NULL THEN (v_current_odometer + p_due_every_km) ELSE NULL END,
+		'ACTIVE', 
+		p_auto_reset, 
+		now(), 
+		now()
+	)
 	RETURNING * INTO v_row;
 
 	RETURN QUERY SELECT v_row.id, v_row.vehicle_id, v_row.name, v_row.description, v_row.category, v_row.service_type, v_row.due_every_days, v_row.due_every_km, v_row.last_reset_at, v_row.last_reset_odometer_km, v_row.next_due_date, v_row.next_due_odometer_km, v_row.status, v_row.auto_reset_on_service, v_row.created_at, v_row.updated_at;
@@ -121,12 +163,25 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
-DECLARE v_row reminder_rules%ROWTYPE; v_owner uuid; v_allowed boolean := false;
+DECLARE 
+	v_row reminder_rules%ROWTYPE; 
+	v_owner uuid; 
+	v_allowed boolean := false;
+	v_current_odometer numeric(10,1);
+	v_new_due_km int;
 BEGIN
 	SELECT r.* INTO v_row FROM reminder_rules r WHERE r.id = p_rule_id; IF NOT FOUND THEN RETURN; END IF;
 	SELECT v.owner_id INTO v_owner FROM vehicles v WHERE v.id = v_row.vehicle_id;
 	IF v_owner = p_user_id OR EXISTS (SELECT 1 FROM vehicle_shares s WHERE s.vehicle_id = v_row.vehicle_id AND s.user_id = p_user_id AND s.role IN ('OWNER','EDITOR')) THEN v_allowed := true; END IF;
 	IF NOT v_allowed THEN RETURN; END IF;
+
+	-- Determine the new due_every_km value
+	v_new_due_km := COALESCE(p_due_every_km, v_row.due_every_km);
+
+	-- If due_every_km is being updated and there's no last_reset, recalculate next_due_odometer_km from current odometer
+	IF p_due_every_km IS NOT NULL AND v_row.last_reset_odometer_km IS NULL THEN
+		v_current_odometer := fn_get_latest_odometer(v_row.vehicle_id);
+	END IF;
 
 	UPDATE reminder_rules rr SET
 		name = COALESCE(p_name, rr.name),
@@ -134,7 +189,13 @@ BEGIN
 		category = COALESCE(p_category, rr.category),
 		service_type = COALESCE(p_service_type, rr.service_type),
 		due_every_days = COALESCE(p_due_every_days, rr.due_every_days),
-		due_every_km = COALESCE(p_due_every_km, rr.due_every_km),
+		due_every_km = v_new_due_km,
+		next_due_odometer_km = CASE 
+			WHEN p_due_every_km IS NOT NULL AND v_row.last_reset_odometer_km IS NULL THEN v_current_odometer + p_due_every_km
+			WHEN p_due_every_km IS NOT NULL AND v_row.last_reset_odometer_km IS NOT NULL THEN v_row.last_reset_odometer_km + p_due_every_km
+			WHEN p_due_every_km IS NULL THEN NULL
+			ELSE rr.next_due_odometer_km
+		END,
 		status = COALESCE(p_status, rr.status),
 		auto_reset_on_service = COALESCE(p_auto_reset, rr.auto_reset_on_service),
 		updated_at = now()
@@ -194,7 +255,7 @@ BEGIN
 	SELECT r.* INTO v_rule FROM reminder_rules r WHERE r.id = p_rule_id; IF NOT FOUND THEN RETURN; END IF;
 	SELECT v.owner_id INTO v_owner FROM vehicles v WHERE v.id = v_rule.vehicle_id;
 	IF v_owner = p_user_id OR EXISTS (SELECT 1 FROM vehicle_shares s WHERE s.vehicle_id = v_rule.vehicle_id AND s.user_id = p_user_id) THEN v_allowed := true; END IF;
-	IF NOT v_allowed OR v_rule.status <> 'ACTIVE' THEN RETURN; END IF;
+	IF NOT v_allowed THEN RETURN; END IF;
 
 	INSERT INTO reminder_events (id, rule_id, triggered_at, odometer_km, reason) VALUES (gen_random_uuid(), p_rule_id, now(), p_odometer, p_reason) RETURNING * INTO v_event;
 

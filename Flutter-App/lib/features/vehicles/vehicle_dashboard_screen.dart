@@ -7,6 +7,7 @@ import '../fuel/fuel_screen.dart';
 import '../odometer/odometer_entries_screen.dart';
 import '../issues/issues_screen.dart';
 import '../services/services_screen.dart';
+import '../reminders/reminders_screen.dart';
 
 class VehicleDashboardScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -185,7 +186,12 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                       icon: Icons.notifications_outlined,
                       label: 'Reminders',
                       onTap: () {
-                        // TODO: Navigate to reminders module
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                RemindersScreen(vehicle: widget.vehicle),
+                          ),
+                        );
                       },
                     ),
                   ],
