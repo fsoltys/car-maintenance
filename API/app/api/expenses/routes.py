@@ -27,7 +27,7 @@ def list_expenses(
     try:
         rows = db.execute(
             text(
-                "SELECT * FROM car_app.fn_get_vehicle_expenses(:actor_id, :vehicle_id, :p_from::date, :p_to::date, :p_category)"
+                "SELECT * FROM car_app.fn_get_vehicle_expenses(:actor_id, :vehicle_id, CAST(:p_from AS date), CAST(:p_to AS date), :p_category)"
             ),
             {"actor_id": current_user_id, "vehicle_id": vehicle_id, "p_from": from_date, "p_to": to_date, "p_category": category},
         ).mappings().all()
@@ -165,7 +165,7 @@ def get_expenses_summary(
     try:
         row = db.execute(
             text(
-                "SELECT * FROM car_app.fn_get_vehicle_expenses_summary(:actor_id, :vehicle_id, :p_from::date, :p_to::date)"
+                "SELECT * FROM car_app.fn_get_vehicle_expenses_summary(:actor_id, :vehicle_id, CAST(:p_from AS date), CAST(:p_to AS date))"
             ),
             {"actor_id": current_user_id, "vehicle_id": vehicle_id, "p_from": from_date, "p_to": to_date},
         ).mappings().first()

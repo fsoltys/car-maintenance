@@ -223,20 +223,22 @@ class _OdometerEntriesScreenState extends State<OdometerEntriesScreen> {
                 },
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context)
-              .push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      AddManualEntryScreen(vehicle: widget.vehicle),
-                ),
-              )
-              .then((_) => _loadEntries());
-        },
-        backgroundColor: AppColors.accentPrimary,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: widget.vehicle.userRole != 'VIEWER'
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AddManualEntryScreen(vehicle: widget.vehicle),
+                      ),
+                    )
+                    .then((_) => _loadEntries());
+              },
+              backgroundColor: AppColors.accentPrimary,
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 

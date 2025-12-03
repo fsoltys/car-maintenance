@@ -299,12 +299,14 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Edit Fueling'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: _isDeleting ? null : _deleteFueling,
-          ),
-        ],
+        actions: widget.vehicle.userRole != 'VIEWER'
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: _isDeleting ? null : _deleteFueling,
+                ),
+              ]
+            : null,
       ),
       body: Form(
         key: _formKey,
@@ -763,24 +765,25 @@ class _EditFuelingScreenState extends State<EditFuelingScreen> {
             const SizedBox(height: 24),
 
             // Submit button
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitFueling,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (widget.vehicle.userRole != 'VIEWER')
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submitFueling,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  child: _isSubmitting
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          'Update Fueling',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
                 ),
-                child: _isSubmitting
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        'Update Fueling',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
               ),
-            ),
           ],
         ),
       ),

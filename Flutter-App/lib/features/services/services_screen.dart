@@ -229,7 +229,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           _loadServices();
                         }
                       },
-                      onLongPress: () => _showDeleteConfirmation(service.id),
+                      onLongPress: widget.vehicle.userRole != 'VIEWER'
+                          ? () => _showDeleteConfirmation(service.id)
+                          : null,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -343,21 +345,24 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 },
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.accentPrimary,
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddServiceScreen(vehicle: widget.vehicle),
-            ),
-          );
-          if (result == true) {
-            _loadServices();
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: widget.vehicle.userRole != 'VIEWER'
+          ? FloatingActionButton(
+              backgroundColor: AppColors.accentPrimary,
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        AddServiceScreen(vehicle: widget.vehicle),
+                  ),
+                );
+                if (result == true) {
+                  _loadServices();
+                }
+              },
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

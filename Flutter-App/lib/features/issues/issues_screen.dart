@@ -234,19 +234,22 @@ class _IssuesScreenState extends State<IssuesScreen> {
                 },
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context)
-              .push(
-                MaterialPageRoute(
-                  builder: (context) => AddIssueScreen(vehicle: widget.vehicle),
-                ),
-              )
-              .then((_) => _loadIssues());
-        },
-        backgroundColor: AppColors.accentPrimary,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: widget.vehicle.userRole != 'VIEWER'
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AddIssueScreen(vehicle: widget.vehicle),
+                      ),
+                    )
+                    .then((_) => _loadIssues());
+              },
+              backgroundColor: AppColors.accentPrimary,
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
@@ -300,17 +303,23 @@ class _IssuesScreenState extends State<IssuesScreen> {
         ),
       ),
       child: InkWell(
-        onTap: () {
-          Navigator.of(context)
-              .push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      AddIssueScreen(vehicle: widget.vehicle, issue: issue),
-                ),
-              )
-              .then((_) => _loadIssues());
-        },
-        onLongPress: () => _showDeleteConfirmation(issue),
+        onTap: widget.vehicle.userRole != 'VIEWER'
+            ? () {
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (context) => AddIssueScreen(
+                          vehicle: widget.vehicle,
+                          issue: issue,
+                        ),
+                      ),
+                    )
+                    .then((_) => _loadIssues());
+              }
+            : null,
+        onLongPress: widget.vehicle.userRole != 'VIEWER'
+            ? () => _showDeleteConfirmation(issue)
+            : null,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),

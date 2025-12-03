@@ -212,20 +212,23 @@ class _RemindersScreenState extends State<RemindersScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AddReminderScreen(vehicle: widget.vehicle),
-            ),
-          );
-          if (result == true) {
-            _loadReminders();
-          }
-        },
-        backgroundColor: AppColors.accentPrimary,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: widget.vehicle.userRole != 'VIEWER'
+          ? FloatingActionButton(
+              onPressed: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        AddReminderScreen(vehicle: widget.vehicle),
+                  ),
+                );
+                if (result == true) {
+                  _loadReminders();
+                }
+              },
+              backgroundColor: AppColors.accentPrimary,
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -312,20 +315,24 @@ class _RemindersScreenState extends State<RemindersScreen> {
         side: BorderSide(color: cardBorderColor, width: 2),
       ),
       child: InkWell(
-        onTap: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AddReminderScreen(
-                vehicle: widget.vehicle,
-                reminder: reminder,
-              ),
-            ),
-          );
-          if (result == true) {
-            _loadReminders();
-          }
-        },
-        onLongPress: () => _showDeleteConfirmation(reminder.id, reminder.name),
+        onTap: widget.vehicle.userRole != 'VIEWER'
+            ? () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddReminderScreen(
+                      vehicle: widget.vehicle,
+                      reminder: reminder,
+                    ),
+                  ),
+                );
+                if (result == true) {
+                  _loadReminders();
+                }
+              }
+            : null,
+        onLongPress: widget.vehicle.userRole != 'VIEWER'
+            ? () => _showDeleteConfirmation(reminder.id, reminder.name)
+            : null,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),

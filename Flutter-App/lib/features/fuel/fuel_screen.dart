@@ -184,21 +184,24 @@ class _FuelScreenState extends State<FuelScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AddFuelingScreen(vehicle: widget.vehicle),
-            ),
-          );
+      floatingActionButton: widget.vehicle.userRole != 'VIEWER'
+          ? FloatingActionButton(
+              onPressed: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        AddFuelingScreen(vehicle: widget.vehicle),
+                  ),
+                );
 
-          if (result == true) {
-            _loadFuelings();
-          }
-        },
-        backgroundColor: AppColors.accentPrimary,
-        child: const Icon(Icons.add),
-      ),
+                if (result == true) {
+                  _loadFuelings();
+                }
+              },
+              backgroundColor: AppColors.accentPrimary,
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -320,7 +323,7 @@ class _FuelScreenState extends State<FuelScreen> {
                     return _buildDetailedFuelingCard(fueling, consumption);
                   } else {
                     // Others have compact view
-                    return _buildCompactFuelingCard(fueling, consumption);
+                    return _buildRecentFuelingCard(fueling, consumption);
                   }
                 },
               ),
@@ -587,7 +590,7 @@ class _FuelScreenState extends State<FuelScreen> {
     );
   }
 
-  Widget _buildCompactFuelingCard(
+  Widget _buildRecentFuelingCard(
     Fueling fueling,
     Map<String, dynamic>? consumption,
   ) {
@@ -604,7 +607,7 @@ class _FuelScreenState extends State<FuelScreen> {
           _loadFuelings(fullHistory: _showingFullHistory);
         }
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),

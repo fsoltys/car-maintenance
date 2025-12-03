@@ -411,7 +411,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           _isEditMode ? 'Edit Service' : 'Add Service',
           style: Theme.of(context).textTheme.labelLarge,
         ),
-        actions: _isEditMode
+        actions: _isEditMode && widget.vehicle.userRole != 'VIEWER'
             ? [
                 IconButton(
                   icon: const Icon(Icons.delete, color: AppColors.error),
@@ -750,31 +750,32 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               const SizedBox(height: 24),
 
               // Save Button
-              ElevatedButton(
-                onPressed: _isLoading ? null : _saveService,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              if (widget.vehicle.userRole != 'VIEWER')
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _saveService,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.textPrimary,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.textPrimary,
+                            ),
                           ),
+                        )
+                      : Text(
+                          _isEditMode ? 'Update Service' : 'Add Service',
+                          style: Theme.of(context).textTheme.labelLarge,
                         ),
-                      )
-                    : Text(
-                        _isEditMode ? 'Update Service' : 'Add Service',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-              ),
+                ),
             ],
           ),
         ),

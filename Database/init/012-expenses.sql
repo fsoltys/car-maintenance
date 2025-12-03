@@ -279,7 +279,7 @@ BEGIN
 
     SELECT jsonb_agg(row_to_json(t)) INTO STRICT monthly_series
     FROM (
-        SELECT month::date AS month, category::text AS category, total_amount, cnt
+        SELECT m.month::date AS month, m.category::text AS category, m.total_amount, m.cnt
         FROM mv_expenses_monthly m
         WHERE m.vehicle_id = p_vehicle_id
           AND (p_from IS NULL OR m.month >= date_trunc('month', p_from)::date)

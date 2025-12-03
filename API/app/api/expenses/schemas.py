@@ -59,5 +59,5 @@ class ExpenseSummary(BaseModel):
     total_amount: float | None = None
     period_km: float | None = None
     cost_per_100km: float | None = None
-    per_category: dict | None = None
+    per_category: list | None = None
     monthly_series: list | None = None

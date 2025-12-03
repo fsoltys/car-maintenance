@@ -86,6 +86,22 @@ class MetaService {
         .toList();
   }
 
+  /// Get expense categories from enums
+  Future<List<ExpenseCategoryEnum>> getExpenseCategories({
+    bool forceRefresh = false,
+  }) async {
+    final enums = await getEnums(forceRefresh: forceRefresh);
+    final expenseCategories = enums['expense_category'] as List<dynamic>?;
+
+    if (expenseCategories == null) return [];
+
+    return expenseCategories
+        .map(
+          (item) => ExpenseCategoryEnum.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
   /// Clear cached enums
   void clearCache() {
     _cachedEnums = null;
@@ -129,6 +145,18 @@ class ServiceTypeEnum extends EnumItem {
 
   factory ServiceTypeEnum.fromJson(Map<String, dynamic> json) {
     return ServiceTypeEnum(
+      value: json['value'] as String,
+      label: json['label'] as String,
+    );
+  }
+}
+
+/// Expense category enum item
+class ExpenseCategoryEnum extends EnumItem {
+  ExpenseCategoryEnum({required super.value, required super.label});
+
+  factory ExpenseCategoryEnum.fromJson(Map<String, dynamic> json) {
+    return ExpenseCategoryEnum(
       value: json['value'] as String,
       label: json['label'] as String,
     );
