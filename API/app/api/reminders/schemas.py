@@ -26,6 +26,7 @@ class ReminderBase(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     service_type: Optional[ServiceType] = None
+    is_recurring: Optional[bool] = True
     due_every_days: Optional[int] = None
     due_every_km: Optional[int] = None
     auto_reset_on_service: Optional[bool] = False
@@ -40,6 +41,7 @@ class ReminderUpdate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     service_type: Optional[ServiceType] = None
+    is_recurring: Optional[bool] = None
     due_every_days: Optional[int] = None
     due_every_km: Optional[int] = None
     status: Optional[str] = None
@@ -53,6 +55,7 @@ class ReminderOut(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     service_type: Optional[ServiceType] = None
+    is_recurring: Optional[bool] = True
     due_every_days: Optional[int] = None
     due_every_km: Optional[int] = None
     last_reset_at: Optional[datetime] = None
@@ -61,6 +64,7 @@ class ReminderOut(BaseModel):
     next_due_odometer_km: Optional[float] = None
     status: Optional[str] = None
     auto_reset_on_service: Optional[bool] = False
+    estimated_days_until_due: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

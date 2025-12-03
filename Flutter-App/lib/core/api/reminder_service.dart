@@ -50,6 +50,34 @@ class ReminderService {
     );
     return Reminder.fromJson(response);
   }
+
+  /// Estimate how many days until a kilometer-based reminder is due
+  /// Returns null if there's insufficient historical data
+  Future<int?> estimateDaysUntilDue(String reminderId) async {
+    try {
+      final response = await _client.get(
+        '/reminders/$reminderId/estimate-days-until-due',
+      );
+      return response['estimated_days'] as int?;
+    } catch (e) {
+      // Return null if the reminder doesn't have a km interval or there's insufficient data
+      return null;
+    }
+  }
+
+  /// Check if a reminder is due soon based on a time threshold
+  /// Use daysThreshold=7 for DUE status check
+  /// Use daysThreshold=30 for upcoming reminders carousel
+  Future<bool> isReminderDueSoon(
+    String reminderId, {
+    int daysThreshold = 7,
+  }) async {
+    final response = await _client.post(
+      '/reminders/$reminderId/check-due-soon',
+      body: {'days_threshold': daysThreshold},
+    );
+    return response['is_due_soon'] as bool? ?? false;
+  }
 }
 
 // Models
@@ -61,6 +89,7 @@ class Reminder {
   final String? description;
   final String? category;
   final String? serviceType;
+  final bool isRecurring;
   final int? dueEveryDays;
   final int? dueEveryKm;
   final DateTime? lastResetAt;
@@ -69,6 +98,7 @@ class Reminder {
   final double? nextDueOdometerKm;
   final String? status;
   final bool autoResetOnService;
+  final int? estimatedDaysUntilDue;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -79,6 +109,7 @@ class Reminder {
     this.description,
     this.category,
     this.serviceType,
+    this.isRecurring = true,
     this.dueEveryDays,
     this.dueEveryKm,
     this.lastResetAt,
@@ -87,6 +118,7 @@ class Reminder {
     this.nextDueOdometerKm,
     this.status,
     this.autoResetOnService = false,
+    this.estimatedDaysUntilDue,
     this.createdAt,
     this.updatedAt,
   });
@@ -99,6 +131,7 @@ class Reminder {
       description: json['description'] as String?,
       category: json['category'] as String?,
       serviceType: json['service_type'] as String?,
+      isRecurring: json['is_recurring'] as bool? ?? true,
       dueEveryDays: json['due_every_days'] as int?,
       dueEveryKm: json['due_every_km'] as int?,
       lastResetAt: json['last_reset_at'] != null
@@ -115,6 +148,7 @@ class Reminder {
           : null,
       status: json['status'] as String?,
       autoResetOnService: json['auto_reset_on_service'] as bool? ?? false,
+      estimatedDaysUntilDue: json['estimated_days_until_due'] as int?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -130,6 +164,7 @@ class ReminderCreate {
   final String? description;
   final String? category;
   final String? serviceType;
+  final bool isRecurring;
   final int? dueEveryDays;
   final int? dueEveryKm;
   final bool autoResetOnService;
@@ -139,6 +174,7 @@ class ReminderCreate {
     this.description,
     this.category,
     this.serviceType,
+    this.isRecurring = true,
     this.dueEveryDays,
     this.dueEveryKm,
     this.autoResetOnService = false,
@@ -150,6 +186,7 @@ class ReminderCreate {
       'description': description,
       'category': category,
       'service_type': serviceType,
+      'is_recurring': isRecurring,
       'due_every_days': dueEveryDays,
       'due_every_km': dueEveryKm,
       'auto_reset_on_service': autoResetOnService,
@@ -162,6 +199,7 @@ class ReminderUpdate {
   final String? description;
   final String? category;
   final String? serviceType;
+  final bool? isRecurring;
   final int? dueEveryDays;
   final int? dueEveryKm;
   final String? status;
@@ -172,6 +210,7 @@ class ReminderUpdate {
   final bool _descriptionSet;
   final bool _categorySet;
   final bool _serviceTypeSet;
+  final bool _isRecurringSet;
   final bool _dueEveryDaysSet;
   final bool _dueEveryKmSet;
   final bool _statusSet;
@@ -182,6 +221,7 @@ class ReminderUpdate {
     this.description,
     this.category,
     this.serviceType,
+    this.isRecurring,
     this.dueEveryDays,
     this.dueEveryKm,
     this.status,
@@ -190,6 +230,7 @@ class ReminderUpdate {
        _descriptionSet = true,
        _categorySet = true,
        _serviceTypeSet = true,
+       _isRecurringSet = true,
        _dueEveryDaysSet = true,
        _dueEveryKmSet = true,
        _statusSet = false,
@@ -201,6 +242,7 @@ class ReminderUpdate {
     if (_descriptionSet) data['description'] = description;
     if (_categorySet) data['category'] = category;
     if (_serviceTypeSet) data['service_type'] = serviceType;
+    if (_isRecurringSet) data['is_recurring'] = isRecurring;
     if (_dueEveryDaysSet) data['due_every_days'] = dueEveryDays;
     if (_dueEveryKmSet) data['due_every_km'] = dueEveryKm;
     if (_statusSet) data['status'] = status;

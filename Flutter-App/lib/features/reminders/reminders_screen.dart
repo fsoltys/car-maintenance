@@ -35,8 +35,32 @@ class _RemindersScreenState extends State<RemindersScreen> {
       final reminders = await _reminderService.getVehicleReminders(
         widget.vehicle.id,
       );
+
+      // Check and update status to DUE if reminder is due within 7 days
+      for (var reminder in reminders) {
+        if (reminder.status == 'ACTIVE') {
+          final isDueSoon = await _reminderService.isReminderDueSoon(
+            reminder.id,
+            daysThreshold: 7,
+          );
+
+          if (isDueSoon) {
+            // Update the status to DUE on the backend
+            await _reminderService.updateReminder(
+              reminder.id,
+              ReminderUpdate(status: 'DUE'),
+            );
+          }
+        }
+      }
+
+      // Reload reminders after potential status updates
+      final updatedReminders = await _reminderService.getVehicleReminders(
+        widget.vehicle.id,
+      );
+
       setState(() {
-        _reminders = reminders;
+        _reminders = updatedReminders;
         _isLoading = false;
       });
     } catch (e) {

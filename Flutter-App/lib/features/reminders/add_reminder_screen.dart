@@ -27,6 +27,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
   late TextEditingController _kmController;
 
   String? _selectedServiceType;
+  bool _isRecurring = true;
   bool _autoResetOnService = false;
   bool _isSubmitting = false;
   List<ServiceTypeEnum> _serviceTypes = [];
@@ -50,6 +51,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
       text: widget.reminder?.dueEveryKm?.toString() ?? '',
     );
     _selectedServiceType = widget.reminder?.serviceType;
+    _isRecurring = widget.reminder?.isRecurring ?? true;
     _autoResetOnService = widget.reminder?.autoResetOnService ?? false;
 
     _loadServiceTypes();
@@ -107,6 +109,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
               ? null
               : _categoryController.text,
           serviceType: _selectedServiceType,
+          isRecurring: _isRecurring,
           dueEveryDays: _daysController.text.isEmpty
               ? null
               : int.parse(_daysController.text),
@@ -127,6 +130,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
               ? null
               : _categoryController.text,
           serviceType: _selectedServiceType,
+          isRecurring: _isRecurring,
           dueEveryDays: _daysController.text.isEmpty
               ? null
               : int.parse(_daysController.text),
@@ -311,7 +315,9 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Set at least one interval to be reminded',
+                _isRecurring
+                    ? 'Set how often this reminder should repeat'
+                    : 'Set when this one-time reminder is due',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
@@ -319,37 +325,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
 
               const SizedBox(height: 16),
 
-              // Time-based interval
-              TextFormField(
-                controller: _daysController,
-                decoration: const InputDecoration(
-                  labelText: 'Every (Days)',
-                  hintText: 'e.g., 180',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.calendar_today),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Distance-based interval
-              TextFormField(
-                controller: _kmController,
-                decoration: const InputDecoration(
-                  labelText: 'Every (Kilometers)',
-                  hintText: 'e.g., 10000',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.speed),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Auto-reset option
+              // Recurring toggle
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -363,13 +339,15 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Auto-reset on service',
+                            'Recurring reminder',
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Automatically reset this reminder when a matching service is recorded',
+                            _isRecurring
+                                ? 'This reminder will repeat automatically'
+                                : 'This reminder will only trigger once',
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: AppColors.textSecondary),
                           ),
@@ -377,10 +355,14 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                       ),
                     ),
                     Switch(
-                      value: _autoResetOnService,
+                      value: _isRecurring,
                       onChanged: (value) {
                         setState(() {
-                          _autoResetOnService = value;
+                          _isRecurring = value;
+                          // Disable auto-reset for non-recurring reminders
+                          if (!value) {
+                            _autoResetOnService = false;
+                          }
                         });
                       },
                       activeColor: AppColors.accentPrimary,
@@ -388,6 +370,81 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              // Time-based interval
+              TextFormField(
+                controller: _daysController,
+                decoration: InputDecoration(
+                  labelText: _isRecurring ? 'Every (Days)' : 'Due in (Days)',
+                  hintText: _isRecurring ? 'e.g., 180' : 'e.g., 30',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.calendar_today),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Distance-based interval
+              TextFormField(
+                controller: _kmController,
+                decoration: InputDecoration(
+                  labelText: _isRecurring
+                      ? 'Every (Kilometers)'
+                      : 'Due in (Kilometers)',
+                  hintText: _isRecurring ? 'e.g., 10000' : 'e.g., 5000',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.speed),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Auto-reset option (only for recurring reminders)
+              if (_isRecurring)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgSurface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Auto-reset on service',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Automatically reset this reminder when a matching service is recorded',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _autoResetOnService,
+                        onChanged: (value) {
+                          setState(() {
+                            _autoResetOnService = value;
+                          });
+                        },
+                        activeColor: AppColors.accentPrimary,
+                      ),
+                    ],
+                  ),
+                ),
 
               const SizedBox(height: 32),
 
