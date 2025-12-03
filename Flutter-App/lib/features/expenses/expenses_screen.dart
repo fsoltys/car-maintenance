@@ -8,6 +8,7 @@ import 'expense_history_screen.dart';
 import 'add_expense_screen.dart';
 import 'expense_details_screen.dart';
 import 'trip_cost_calculator_screen.dart';
+import '../budget/budget_forecast_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -420,6 +421,21 @@ class _ExpensesScreenState extends State<ExpensesScreen>
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (_isFabExpanded) ...[
+          // Budget Forecast FAB
+          _buildSmallFab(
+            icon: Icons.account_balance_wallet,
+            label: 'Budget Forecast',
+            onPressed: () {
+              setState(() => _isFabExpanded = false);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      BudgetForecastScreen(vehicle: widget.vehicle),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
           // Cost Calculator FAB
           _buildSmallFab(
             icon: Icons.calculate,

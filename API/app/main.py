@@ -10,6 +10,7 @@ from app.api.issues.routes import router as issues_router
 from app.api.odometer_entries.routes import router as odometer_entries_router
 from app.api.expenses.routes import router as expenses_router
 from app.api.reminders.routes import router as reminders_router
+from app.api.budget.routes import router as budget_router
 
 app = FastAPI(
     title="Car Maintenance API",
@@ -26,3 +27,4 @@ app.include_router(issues_router)
 app.include_router(odometer_entries_router)
 app.include_router(expenses_router)
 app.include_router(reminders_router)
+app.include_router(budget_router)

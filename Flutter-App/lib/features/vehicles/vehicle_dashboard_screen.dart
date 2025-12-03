@@ -247,6 +247,24 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Placeholder buttons for future features
+                    _buildModuleButton(
+                      icon: Icons.more_horiz,
+                      label: 'More',
+                      onTap: () {
+                        // TODO: Add more features menu
+                      },
+                      isDisabled: true,
+                    ),
+                    // Empty spaces for symmetry
+                    const SizedBox(width: 80),
+                    const SizedBox(width: 80),
+                  ],
+                ),
               ],
             ),
           ),
@@ -602,27 +620,38 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool isDisabled = false,
   }) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Material(
-          color: const Color(0xFF4A3A5A),
+          color: isDisabled
+              ? const Color(0xFF4A3A5A).withOpacity(0.5)
+              : const Color(0xFF4A3A5A),
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
-            onTap: onTap,
+            onTap: isDisabled ? null : onTap,
             borderRadius: BorderRadius.circular(16),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, color: AppColors.accentPrimary, size: 28),
+                  Icon(
+                    icon,
+                    color: isDisabled
+                        ? AppColors.accentPrimary.withOpacity(0.5)
+                        : AppColors.accentPrimary,
+                    size: 28,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     label,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textPrimary,
+                      color: isDisabled
+                          ? AppColors.textPrimary.withOpacity(0.5)
+                          : AppColors.textPrimary,
                       fontSize: 11,
                     ),
                   ),

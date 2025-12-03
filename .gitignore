@@ -17,8 +17,9 @@ dist/
 .DS_Store
 Thumbs.db
 *.iml
+Flutter-App/.idea/
 
-# Flutter
+# Flutter - General build outputs and caches
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
@@ -26,13 +27,20 @@ Thumbs.db
 .pub/
 Flutter-App/.dart_tool/
 Flutter-App/build/
-Flutter-App/ios/
-Flutter-App/android/
-Flutter-App/web/
-Flutter-App/linux/
-Flutter-App/macos/
-Flutter-App/windows/
-Flutter-App/pubspec.lock
+
+# Flutter - Android-specific build artifacts
+Flutter-App/android/.gradle/
+Flutter-App/android/.kotlin/
+Flutter-App/android/captures/
+Flutter-App/android/.cxx/
+Flutter-App/android/app/build/
+Flutter-App/android/build/
+
+# Flutter - User-specific / Sensitive files
+Flutter-App/android/local.properties
+Flutter-App/android/key.properties
+**/*.keystore
+**/*.jks
 
 # dev scripts
 scripts/
