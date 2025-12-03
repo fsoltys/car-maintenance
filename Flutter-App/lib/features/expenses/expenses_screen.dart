@@ -5,6 +5,9 @@ import '../../core/api/vehicle_service.dart';
 import '../../core/api/expense_service.dart';
 import '../../core/api/meta_service.dart';
 import 'expense_history_screen.dart';
+import 'add_expense_screen.dart';
+import 'expense_details_screen.dart';
+import 'trip_cost_calculator_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -15,13 +18,15 @@ class ExpensesScreen extends StatefulWidget {
   State<ExpensesScreen> createState() => _ExpensesScreenState();
 }
 
-class _ExpensesScreenState extends State<ExpensesScreen> {
+class _ExpensesScreenState extends State<ExpensesScreen>
+    with SingleTickerProviderStateMixin {
   final ExpenseService _expenseService = ExpenseService();
   List<Expense> _recentExpenses = [];
   List<ExpenseCategoryEnum> _categories = [];
   ExpenseSummary? _summary;
   bool _isLoading = true;
   String? _error;
+  bool _isFabExpanded = false;
 
   @override
   void initState() {
@@ -259,6 +264,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ],
               ),
             ),
+      floatingActionButton: widget.vehicle.userRole != 'VIEWER'
+          ? _buildExpandableFab()
+          : null,
     );
   }
 
@@ -326,69 +334,188 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final categoryIcon = _getCategoryIcon(expense.category);
     final categoryLabel = _getCategoryLabel(expense.category);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          // Category icon
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: categoryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(categoryIcon, color: categoryColor, size: 24),
+    return InkWell(
+      onTap: () async {
+        final result = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>
+                AddExpenseScreen(vehicle: widget.vehicle, expense: expense),
           ),
-          const SizedBox(width: 16),
+        );
+        if (result == true) {
+          _loadExpenses();
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            // Category icon
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: categoryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(categoryIcon, color: categoryColor, size: 24),
+            ),
+            const SizedBox(width: 16),
 
-          // Expense details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  categoryLabel,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _formatDate(expense.expenseDate),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                if (expense.note != null && expense.note!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+            // Expense details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    expense.note!,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    categoryLabel,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _formatDate(expense.expenseDate),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (expense.note != null && expense.note!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      expense.note!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
 
-          // Amount
-          Text(
-            '${expense.amount.toStringAsFixed(2)} PLN',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: categoryColor,
+            // Amount
+            Text(
+              '${expense.amount.toStringAsFixed(2)} PLN',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: categoryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableFab() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (_isFabExpanded) ...[
+          // Cost Calculator FAB
+          _buildSmallFab(
+            icon: Icons.calculate,
+            label: 'Cost Calculator',
+            onPressed: () {
+              setState(() => _isFabExpanded = false);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      TripCostCalculatorScreen(vehicle: widget.vehicle),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          // Expense Details FAB
+          _buildSmallFab(
+            icon: Icons.bar_chart,
+            label: 'Expense Details',
+            onPressed: () {
+              setState(() => _isFabExpanded = false);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ExpenseDetailsScreen(vehicle: widget.vehicle),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          // Add Expense FAB
+          _buildSmallFab(
+            icon: Icons.receipt_long,
+            label: 'Add Expense',
+            onPressed: () async {
+              setState(() => _isFabExpanded = false);
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      AddExpenseScreen(vehicle: widget.vehicle),
+                ),
+              );
+              if (result == true) {
+                _loadExpenses();
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+        // Main FAB
+        FloatingActionButton(
+          onPressed: () {
+            setState(() => _isFabExpanded = !_isFabExpanded);
+          },
+          backgroundColor: AppColors.accentPrimary,
+          child: AnimatedRotation(
+            turns: _isFabExpanded ? 0.125 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: Icon(_isFabExpanded ? Icons.close : Icons.add),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSmallFab({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(8),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 12),
+        FloatingActionButton(
+          heroTag: label,
+          mini: true,
+          onPressed: onPressed,
+          backgroundColor: AppColors.accentPrimary,
+          child: Icon(icon, size: 20),
+        ),
+      ],
     );
   }
 }

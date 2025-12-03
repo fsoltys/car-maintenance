@@ -97,30 +97,68 @@ class _FuelScreenState extends State<FuelScreen> {
       return null; // Need tank capacity for estimation
     }
 
-    if (current.fuelLevelBefore == null || current.fuelLevelAfter == null) {
-      return null; // Need fuel level data
+    // Try to estimate using available fuel level data
+    // Check if current has fuelLevelBefore - we can use it with any previous fueling
+    if (current.fuelLevelBefore != null) {
+      // Find the nearest previous fueling with SAME fuel type
+      for (int i = currentIndex + 1; i < _fuelings.length; i++) {
+        final previous = _fuelings[i];
+
+        if (previous.fuel == current.fuel) {
+          final distanceKm = current.odometerKm - previous.odometerKm;
+          if (distanceKm <= 0) {
+            continue;
+          }
+
+          double? fuelConsumed;
+
+          // Case 1: Previous has fuelLevelAfter, current has fuelLevelBefore
+          if (previous.fuelLevelAfter != null) {
+            final startingFuel =
+                (previous.fuelLevelAfter! / 100) * tankCapacity;
+            final endingFuel = (current.fuelLevelBefore! / 100) * tankCapacity;
+            fuelConsumed = startingFuel - endingFuel;
+          }
+          // Case 2: Previous is full tank, current has fuelLevelBefore
+          else if (previous.fullTank) {
+            // After previous full tank, we had tankCapacity liters
+            // Before current fueling, we had fuelLevelBefore% of tank
+            final startingFuel = tankCapacity; // Full tank
+            final endingFuel = (current.fuelLevelBefore! / 100) * tankCapacity;
+            fuelConsumed = startingFuel - endingFuel;
+          }
+
+          if (fuelConsumed != null &&
+              fuelConsumed > 0 &&
+              fuelConsumed < tankCapacity * 3) {
+            final consumption = (fuelConsumed / distanceKm) * 100;
+            return {'value': consumption, 'isEstimated': true};
+          } else {
+            continue;
+          }
+        }
+      }
     }
+    // Fallback: only fuelLevelAfter available on current
+    else if (current.fuelLevelAfter != null) {
+      for (int i = currentIndex + 1; i < _fuelings.length; i++) {
+        final previous = _fuelings[i];
 
-    // Find previous fueling with fuel level data and SAME fuel type
-    for (int i = currentIndex + 1; i < _fuelings.length; i++) {
-      final previous = _fuelings[i];
+        if (previous.fuelLevelAfter != null && previous.fuel == current.fuel) {
+          final distanceKm = current.odometerKm - previous.odometerKm;
+          if (distanceKm <= 0) {
+            continue;
+          }
 
-      if (previous.fuelLevelAfter != null && previous.fuel == current.fuel) {
-        final distanceKm = current.odometerKm - previous.odometerKm;
-        if (distanceKm <= 0) return null;
+          final previousFuel = (previous.fuelLevelAfter! / 100) * tankCapacity;
+          final currentFuel = (current.fuelLevelAfter! / 100) * tankCapacity;
+          final fuelConsumed = previousFuel - currentFuel + current.volume;
 
-        // Calculate fuel consumed
-        // Starting fuel = previous.fuelLevelAfter% of tank
-        // Ending fuel = current.fuelLevelBefore% of tank
-        // Consumed = starting - ending + current.volume
-        final startingFuel = (previous.fuelLevelAfter! / 100) * tankCapacity;
-        final endingFuel = (current.fuelLevelBefore! / 100) * tankCapacity;
-        final fuelConsumed = startingFuel - endingFuel + current.volume;
-
-        if (fuelConsumed <= 0) return null;
-
-        final consumption = (fuelConsumed / distanceKm) * 100;
-        return {'value': consumption, 'isEstimated': true};
+          if (fuelConsumed > 0 && fuelConsumed < tankCapacity * 3) {
+            final consumption = (fuelConsumed / distanceKm) * 100;
+            return {'value': consumption, 'isEstimated': true};
+          }
+        }
       }
     }
 
