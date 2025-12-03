@@ -72,7 +72,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'reminder_status') THEN
         CREATE TYPE reminder_status AS ENUM (
             'ACTIVE',
-            'DUE'.
+            'DUE',
             'OVERDUE',
             'PAUSED',
             'ARCHIVED'
