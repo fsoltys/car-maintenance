@@ -11,6 +11,7 @@ import '../issues/issues_screen.dart';
 import '../services/services_screen.dart';
 import '../reminders/reminders_screen.dart';
 import '../expenses/expenses_screen.dart';
+import '../export/export_data_screen.dart';
 
 class VehicleDashboardScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -109,6 +110,21 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
               ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Export Data',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ExportDataScreen(vehicle: widget.vehicle),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -248,23 +264,7 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Placeholder buttons for future features
-                    _buildModuleButton(
-                      icon: Icons.more_horiz,
-                      label: 'More',
-                      onTap: () {
-                        // TODO: Add more features menu
-                      },
-                      isDisabled: true,
-                    ),
-                    // Empty spaces for symmetry
-                    const SizedBox(width: 80),
-                    const SizedBox(width: 80),
-                  ],
-                ),
+                // Removed placeholder "More" button - no additional features planned
               ],
             ),
           ),
