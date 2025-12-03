@@ -1,6 +1,6 @@
-# Car Maintenance — Backend + Database
+# Car Maintenance — System zarządzania samochodem
 
-Repozytorium zawiera aplikację wspomagającą zarządzanie samochodem osobowym, przygotowaną w ramach pracy inżynierskiej. Praca skłąda się z  backendu FastAPI, bazy danych PostgreSQL i aplikacji mobilnej (Flutter) 
+Repozytorium zawiera pełną aplikację wspomagającą zarządzanie samochodem osobowym, przygotowaną w ramach pracy inżynierskiej. System składa się z backendu FastAPI, bazy danych PostgreSQL oraz aplikacji mobilnej Flutter. 
 
 ## Szybki start (Docker Compose)
 
@@ -53,29 +53,61 @@ ENVIRONMENT=dev
   - `app/` — kod źródłowy (route'y, schematy, zależności)
 - `Database/` — skrypty inicjujące bazę danych
   - `init/` — skrypty SQL uruchamiane przy inicjalizacji DB (w `docker-entrypoint-initdb.d/`)
-- `Flutter-App/` — kod frontendu (WIP)
+- `Flutter-App/` — aplikacja mobilna Flutter
+  - `lib/` — kod źródłowy aplikacji
+    - `core/` — podstawowe klasy (API client, theme, constants)
+    - `features/` — funkcjonalności aplikacji (auth, fuel, expenses, services, reminders, home)
+    - `models/` — modele danych
+    - `services/` — serwisy komunikacji z API
 
-## API
-Najważniejsze endpointy, niektóre z nich wymagają autoryzacji (Bearer token JWT).
+## API Backend
 
-| Metoda | Ścieżka | Opis |
-|--------|---------|------|
-| GET | `/users/me` | Pobranie profilu zalogowanego użytkownika |
-| GET | `/meta/health` | Health check API + DB connection |
-| GET | `/meta/version` | Informacje o wersji serwisu |
-| POST | `/auth/register` | Rejestracja użytkownika — zwraca profil (UserOut) |
-| POST | `/auth/login` | Logowanie — zwraca token dostępu (Bearer) |
-| GET | `/vehicles` | Lista pojazdów (własne + współdzielone) |
-| POST | `/vehicles` | Utworzenie pojazdu |
-| GET | `/vehicles/{vehicle_id}` | Pobranie szczegółów pojazdu |
-| PATCH | `/vehicles/{vehicle_id}` | Częściowa aktualizacja pojazdu |
-| DELETE | `/vehicles/{vehicle_id}` | Usunięcie pojazdu |
-| GET | `/vehicles/{vehicle_id}/shares` | Lista współdzielących (tylko OWNER) |
-| POST | `/vehicles/{vehicle_id}/shares` | Dodanie lub aktualizacja udziału (owner only) |
-| PATCH | `/vehicles/{vehicle_id}/shares/{user_id}` | Zmiana roli współdzielącego |
-| DELETE | `/vehicles/{vehicle_id}/shares/{user_id}` | Usunięcie współdzielenia |
-| GET | `/vehicles/{vehicle_id}/fuels` | Pobranie konfiguracji paliw pojazdu |
-| PUT | `/vehicles/{vehicle_id}/fuels` | Zastąpienie konfiguracji paliw pojazdu |
+Backend FastAPI udostępnia RESTful API z autoryzacją JWT. Aplikacja jest podzielona na moduły funkcjonalne:
+
+### Główne grupy endpointów
+
+- **Autoryzacja i użytkownicy** (`/auth`, `/users`)
+  - Rejestracja i logowanie użytkowników
+  - Zarządzanie profilem użytkownika
+  - Tokeny JWT (Bearer authentication)
+
+- **Pojazdy** (`/vehicles`)
+  - CRUD operacje na pojazdach
+  - Współdzielenie pojazdów z innymi użytkownikami (role: OWNER, EDITOR, VIEWER)
+  - Konfiguracja paliw i parametrów technicznych
+  - Obliczanie średniego spalania
+
+- **Tankowania** (`/vehicles/{vehicle_id}/fuelings`)
+  - Historia tankowania
+  - Śledzenie kosztów paliwa
+  - Automatyczne obliczanie spalania (pełny/częściowy bak)
+  - Wsparcie dla różnych cykli jazdy i typów paliwa
+
+- **Wydatki** (`/vehicles/{vehicle_id}/expenses`)
+  - Ewidencja wydatków związanych z pojazdem
+  - Kategoryzacja (paliwo, serwis, ubezpieczenie, itp.)
+  - Analiza kosztów eksploatacji
+
+- **Serwis** (`/vehicles/{vehicle_id}/services`)
+  - Historia napraw i przeglądów
+  - Śledzenie kosztów serwisowych
+  - Przypisywanie do wykonawców
+
+- **Przypomnienia** (`/vehicles/{vehicle_id}/reminders`)
+  - Przypomnienia o przeglądach, ubezpieczeniu, wymianach
+  - Przypomnienia oparte na czasie lub przebiegu
+  - Automatyczne powiadomienia
+
+- **Meta** (`/meta`)
+  - Health check i status systemu
+  - Słowniki danych (kategorie wydatków, typy paliw, cykle jazdy)
+  - Wersjonowanie API
+
+### Dokumentacja API
+
+Pełna interaktywna dokumentacja dostępna po uruchomieniu backendu:
+- Swagger UI: http://localhost:8000/docs
+- Redoc: http://localhost:8000/redoc
 
 ## Baza danych
 
@@ -89,4 +121,83 @@ Skrypty znajdują się w `Database/init/` i są montowane do kontenera PostgreSQ
 - `006-meta.sql` — dodatkowe tabele meta, np. do wersjonowania schematu, słowników lub danych pomocniczych.
 - `007-vehicle-fuel-config.sql` — konfiguracja paliw/zbiornika i funkcje pomocnicze związane z profilem paliwa i obliczeniami.
 
-## Frontend (WIP)
+## Aplikacja mobilna Flutter
+
+Aplikacja mobilna napisana we Flutter umożliwia kompleksowe zarządzanie pojazdem z poziomu smartfona (Android/iOS).
+
+### Główne funkcjonalności
+
+#### Ekran główny (Home)
+- Przegląd kluczowych informacji o pojeździe
+- Ostatnie tankowanie i średnie spalanie
+- Nadchodzące przypomnienia
+- Szybki dostęp do głównych funkcji
+
+#### Tankowania (Fuel)
+- Dodawanie tankowań (pełny/częściowy bak)
+- Śledzenie poziomu paliwa przed i po tankowaniu
+- Automatyczne obliczanie spalania:
+  - Metoda pełnego baku (dokładna)
+  - Metoda szacunkowa z poziomami paliwa
+- Historia tankowań z przebiegiem
+- Wyświetlanie spalania (L/100km) z oznaczeniem typu pomiaru
+- Wsparcie dla różnych typów paliwa
+
+#### Wydatki (Expenses)
+- Ewidencja wszystkich wydatków związanych z pojazdem
+- Dodaj wydatek — szybkie dodawanie nowych wydatków
+- Szczegóły wydatków — analityka z wykresami:
+    - Wykres kołowy: rozkład wydatków według kategorii (%)
+    - Wykres słupkowy: miesięczne wydatki z filtrem kategorii
+- Kalkulator kosztów podróży — planowanie kosztów:
+    - Dystans podróży
+    - Aktualna cena paliwa
+    - Wybór cyklu jazdy (miasto/trasa/mieszany)
+    - Automatyczne obliczenie na podstawie historycznego spalania
+- Kategoryzacja wydatków (paliwo, serwis, ubezpieczenie, części, inne)
+
+#### Serwis (Services)
+- Historia napraw i przeglądów
+- Dodawanie usług serwisowych
+- Śledzenie kosztów napraw
+- Informacje o wykonawcach
+
+#### Przypomnienia (Reminders)
+- Tworzenie przypomnień czasowych lub przebiegu
+- Przypomnienia o:
+  - Przeglądach okresowych
+  - Ubezpieczeniu
+  - Wymianie opon
+  - Wymianie oleju
+  - Innych czynnościach
+- Podgląd nadchodzących i przeszłych przypomnień
+
+### Technologie i architektura
+
+- **Framework**: Flutter 3.x
+- **Język**: Dart
+- **Zarządzanie stanem**: StatefulWidget z lokalnym stanem
+- **Komunikacja z API**: HTTP client z autoryzacją JWT
+- **Wizualizacja danych**: fl_chart (wykresy kołowe i słupkowe)
+- **Design**: Material Design 3 z ciemnym motywem
+- **Architektura**: Feature-based structure
+  - Separacja features (fuel, expenses, services, reminders)
+  - Centralne serwisy API
+  - Wspólne modele danych
+  - Reużywalne komponenty UI
+
+### Konfiguracja aplikacji
+
+Przed uruchomieniem należy skonfigurować adres API w pliku `lib/core/api_client.dart`:
+
+```dart
+static const String baseUrl = 'http://localhost:8000'; // lub adres serwera
+```
+
+### Uruchomienie aplikacji
+
+```powershell
+cd Flutter-App
+flutter pub get
+flutter run
+```
