@@ -172,6 +172,44 @@ def get_vehicle(
     return VehicleOut.model_validate(row)
 
 
+@router.get("/{vehicle_id}/latest-odometer")
+def get_latest_odometer(
+    vehicle_id: UUID,
+    db: Session = Depends(get_db),
+    current_user_id: UUID = Depends(get_current_user_id),
+) -> dict:
+    """
+    Get the most recent odometer reading for a vehicle.
+    """
+    # Verify user has access to this vehicle
+    vehicle = db.execute(
+        text("SELECT * FROM fn_get_vehicle(:user_id, :vehicle_id)"),
+        {"user_id": current_user_id, "vehicle_id": vehicle_id},
+    ).mappings().first()
+
+    if vehicle is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vehicle not found or no permission",
+        )
+
+    try:
+        result = db.execute(
+            text("SELECT car_app.fn_get_latest_odometer(:vehicle_id) as odometer_km"),
+            {"vehicle_id": vehicle_id},
+        ).mappings().first()
+    except DBAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Database error while fetching latest odometer.",
+        ) from exc
+
+    return {
+        "vehicle_id": str(vehicle_id),
+        "odometer_km": float(result["odometer_km"]) if result and result["odometer_km"] else 0.0,
+    }
+
+
 @router.patch("/{vehicle_id}", response_model=VehicleOut)
 def update_vehicle(
     vehicle_id: UUID,

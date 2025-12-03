@@ -3,6 +3,7 @@ import '../../app_theme.dart';
 import '../../core/api/vehicle_service.dart';
 import '../../core/api/fueling_service.dart';
 import '../../core/api/odometer_service.dart';
+import '../../core/api/reminder_service.dart';
 import '../fuel/fuel_screen.dart';
 import '../odometer/odometer_entries_screen.dart';
 import '../issues/issues_screen.dart';
@@ -21,6 +22,57 @@ class VehicleDashboardScreen extends StatefulWidget {
 class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
   int _currentCarouselIndex = 0;
   final PageController _pageController = PageController();
+  final ReminderService _reminderService = ReminderService();
+  final VehicleService _vehicleService = VehicleService();
+
+  Future<Map<String, dynamic>> _loadUpcomingReminders() async {
+    try {
+      final currentOdometer = await _vehicleService.getLatestOdometer(
+        widget.vehicle.id,
+      );
+
+      final reminders = await _reminderService.getVehicleReminders(
+        widget.vehicle.id,
+      );
+
+      // Filter reminders that are due within 30 days
+      // Use date-based calculation or km-based estimation (whichever is sooner)
+      final upcoming = <Reminder>[];
+      final now = DateTime.now();
+
+      for (var reminder in reminders) {
+        // Skip inactive reminders
+        if (reminder.status != 'ACTIVE' && reminder.status != 'DUE') {
+          continue;
+        }
+
+        int? daysUntilDue;
+
+        // Check date-based reminder
+        if (reminder.nextDueDate != null) {
+          daysUntilDue = reminder.nextDueDate!.difference(now).inDays;
+        }
+
+        // Check km-based reminder (use estimated days if available)
+        if (reminder.estimatedDaysUntilDue != null) {
+          // Use the smaller value (whichever comes first)
+          if (daysUntilDue == null ||
+              reminder.estimatedDaysUntilDue! < daysUntilDue) {
+            daysUntilDue = reminder.estimatedDaysUntilDue;
+          }
+        }
+
+        // Add if due within 30 days
+        if (daysUntilDue != null && daysUntilDue <= 30) {
+          upcoming.add(reminder);
+        }
+      }
+
+      return {'reminders': upcoming, 'currentOdometer': currentOdometer};
+    } catch (e) {
+      return {'reminders': <Reminder>[], 'currentOdometer': 0.0};
+    }
+  }
 
   @override
   void dispose() {
@@ -79,11 +131,7 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
                         icon: Icons.attach_money,
                         color: AppColors.accentPrimary,
                       ),
-                      _buildCarouselCard(
-                        title: 'Service Reminders',
-                        icon: Icons.build_outlined,
-                        color: const Color(0xFF4CAF50),
-                      ),
+                      _buildUpcomingRemindersCard(),
                     ],
                   ),
                 ),
@@ -580,6 +628,200 @@ class _VehicleDashboardScreenState extends State<VehicleDashboardScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingRemindersCard() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadUpcomingReminders(),
+      builder: (context, snapshot) {
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
+        final data = snapshot.data ?? {};
+        final upcomingReminders = data['reminders'] as List<Reminder>? ?? [];
+        final currentOdometer = data['currentOdometer'] as double? ?? 0.0;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.bgSurface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.accentSecondary.withOpacity(0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.notifications_active_outlined,
+                    color: AppColors.accentSecondary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Upcoming Reminders',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (!isLoading && upcomingReminders.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentSecondary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${upcomingReminders.length}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.accentSecondary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.accentSecondary,
+                        ),
+                      )
+                    : upcomingReminders.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline,
+                              size: 64,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No upcoming reminders',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'All maintenance is up to date!',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: upcomingReminders.length,
+                        itemBuilder: (context, index) {
+                          final reminder = upcomingReminders[index];
+                          return _buildReminderItem(reminder, currentOdometer);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReminderItem(Reminder reminder, double currentOdometer) {
+    String dueInfo = '';
+
+    // Calculate time-based info
+    if (reminder.nextDueDate != null) {
+      final daysUntil = reminder.nextDueDate!.difference(DateTime.now()).inDays;
+      if (daysUntil <= 0) {
+        dueInfo = 'Due today';
+      } else {
+        dueInfo = 'Due in $daysUntil days';
+      }
+    }
+
+    // Calculate distance-based info
+    if (reminder.nextDueOdometerKm != null && currentOdometer > 0) {
+      final remainingKm = reminder.nextDueOdometerKm! - currentOdometer;
+      if (remainingKm > 0) {
+        final kmInfo = '${remainingKm.toStringAsFixed(0)} km';
+        dueInfo = dueInfo.isEmpty ? 'Due in $kmInfo' : '$dueInfo or $kmInfo';
+      }
+    }
+
+    if (dueInfo.isEmpty) {
+      dueInfo = 'Check reminder details';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bgMain,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.accentSecondary.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.accentSecondary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.build_outlined,
+              color: AppColors.accentSecondary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reminder.name,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  dueInfo,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, color: AppColors.textMuted),
+        ],
       ),
     );
   }

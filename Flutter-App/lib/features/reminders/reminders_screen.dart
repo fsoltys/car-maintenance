@@ -15,7 +15,9 @@ class RemindersScreen extends StatefulWidget {
 
 class _RemindersScreenState extends State<RemindersScreen> {
   final ReminderService _reminderService = ReminderService();
+  final VehicleService _vehicleService = VehicleService();
   List<Reminder> _reminders = [];
+  double _currentOdometer = 0.0;
   bool _isLoading = true;
   String? _error;
 
@@ -32,6 +34,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
     });
 
     try {
+      // Fetch current odometer reading
+      final currentOdometer = await _vehicleService.getLatestOdometer(
+        widget.vehicle.id,
+      );
+
       final reminders = await _reminderService.getVehicleReminders(
         widget.vehicle.id,
       );
@@ -41,7 +48,6 @@ class _RemindersScreenState extends State<RemindersScreen> {
         if (reminder.status == 'ACTIVE') {
           final isDueSoon = await _reminderService.isReminderDueSoon(
             reminder.id,
-            daysThreshold: 7,
           );
 
           if (isDueSoon) {
@@ -61,6 +67,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
       setState(() {
         _reminders = updatedReminders;
+        _currentOdometer = currentOdometer;
         _isLoading = false;
       });
     } catch (e) {
@@ -148,26 +155,34 @@ class _RemindersScreenState extends State<RemindersScreen> {
       }
     }
 
-    // Calculate distance-based info
-    if (reminder.nextDueOdometerKm != null) {
-      distanceInfo = '${reminder.nextDueOdometerKm!.toStringAsFixed(0)} km';
+    // Calculate distance-based info (remaining km)
+    if (reminder.nextDueOdometerKm != null && _currentOdometer > 0) {
+      final remainingKm = reminder.nextDueOdometerKm! - _currentOdometer;
+      if (remainingKm > 0) {
+        distanceInfo = '${remainingKm.toStringAsFixed(0)} km';
+      } else {
+        distanceInfo = 'overdue by ${(-remainingKm).toStringAsFixed(0)} km';
+      }
     }
 
     // Combine both when present
     if (timeInfo != null && distanceInfo != null) {
-      if (timeInfo.contains('overdue')) {
+      if (timeInfo.contains('overdue') || distanceInfo.contains('overdue')) {
         return 'Overdue: $timeInfo or $distanceInfo';
       } else if (timeInfo == 'today') {
-        return 'Due today or at $distanceInfo';
+        return 'Due today or in $distanceInfo';
       } else {
-        return 'Due in $timeInfo or $distanceInfo';
+        return 'Due in $timeInfo or in $distanceInfo';
       }
     } else if (timeInfo != null) {
       return timeInfo.contains('overdue') || timeInfo == 'today'
           ? timeInfo.substring(0, 1).toUpperCase() + timeInfo.substring(1)
           : 'Due in $timeInfo';
     } else if (distanceInfo != null) {
-      return 'Due at $distanceInfo';
+      return distanceInfo.contains('overdue')
+          ? distanceInfo.substring(0, 1).toUpperCase() +
+                distanceInfo.substring(1)
+          : 'Due in $distanceInfo';
     }
 
     return 'No due date set';
@@ -385,10 +400,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 ],
               ),
 
-              // Service type and interval
+              // Service type and interval (only show intervals for recurring reminders)
               if (reminder.serviceType != null ||
-                  reminder.dueEveryDays != null ||
-                  reminder.dueEveryKm != null) ...[
+                  (reminder.isRecurring &&
+                      (reminder.dueEveryDays != null ||
+                          reminder.dueEveryKm != null))) ...[
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -399,12 +415,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         Icons.build_outlined,
                         _formatServiceType(reminder.serviceType!),
                       ),
-                    if (reminder.dueEveryDays != null)
+                    if (reminder.isRecurring && reminder.dueEveryDays != null)
                       _buildInfoChip(
                         Icons.calendar_today,
                         'Every ${reminder.dueEveryDays} days',
                       ),
-                    if (reminder.dueEveryKm != null)
+                    if (reminder.isRecurring && reminder.dueEveryKm != null)
                       _buildInfoChip(
                         Icons.speed,
                         'Every ${reminder.dueEveryKm} km',

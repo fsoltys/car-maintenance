@@ -65,18 +65,17 @@ class ReminderService {
     }
   }
 
-  /// Check if a reminder is due soon based on a time threshold
-  /// Use daysThreshold=7 for DUE status check
-  /// Use daysThreshold=30 for upcoming reminders carousel
-  Future<bool> isReminderDueSoon(
-    String reminderId, {
-    int daysThreshold = 7,
-  }) async {
+  /// Check if an ACTIVE reminder should be marked as DUE (within 7 days)
+  Future<bool> isReminderDueSoon(String reminderId) async {
     final response = await _client.post(
       '/reminders/$reminderId/check-due-soon',
-      body: {'days_threshold': daysThreshold},
     );
     return response['is_due_soon'] as bool? ?? false;
+  }
+
+  /// Update reminder status to DUE
+  Future<void> updateReminderStatus(String reminderId, String status) async {
+    await _client.patch('/reminders/$reminderId', body: {'status': status});
   }
 }
 
@@ -233,7 +232,7 @@ class ReminderUpdate {
        _isRecurringSet = true,
        _dueEveryDaysSet = true,
        _dueEveryKmSet = true,
-       _statusSet = false,
+       _statusSet = true,
        _autoResetOnServiceSet = true;
 
   Map<String, dynamic> toJson() {

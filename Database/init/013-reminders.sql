@@ -19,7 +19,7 @@ BEGIN
 		UNION ALL
 		SELECT odometer_km FROM fuelings WHERE vehicle_id = p_vehicle_id AND odometer_km IS NOT NULL
 		UNION ALL
-		SELECT odometer_km FROM odometer_entries WHERE vehicle_id = p_vehicle_id
+		SELECT value_km as odometer_km FROM odometer_entries WHERE vehicle_id = p_vehicle_id
 	) combined_odometers;
 	
 	RETURN COALESCE(v_latest_odometer, 0);
@@ -221,6 +221,12 @@ BEGIN
 		is_recurring = COALESCE(p_is_recurring, rr.is_recurring),
 		due_every_days = COALESCE(p_due_every_days, rr.due_every_days),
 		due_every_km = v_new_due_km,
+		-- Recalculate next_due_date if due_every_days is updated and there's no last_reset
+		next_due_date = CASE
+			WHEN p_due_every_days IS NOT NULL AND v_row.last_reset_at IS NULL THEN now()::date + p_due_every_days
+			WHEN p_due_every_days IS NOT NULL AND v_row.last_reset_at IS NOT NULL THEN v_row.last_reset_at::date + p_due_every_days
+			ELSE rr.next_due_date
+		END,
 		next_due_odometer_km = CASE 
 			WHEN p_due_every_km IS NOT NULL AND v_row.last_reset_odometer_km IS NULL THEN v_current_odometer + p_due_every_km
 			WHEN p_due_every_km IS NOT NULL AND v_row.last_reset_odometer_km IS NOT NULL THEN v_row.last_reset_odometer_km + p_due_every_km
@@ -468,8 +474,8 @@ BEGIN
 	FROM reminder_rules
 	WHERE id = p_reminder_id;
 	
-	-- If reminder doesn't exist or is not ACTIVE, return FALSE
-	IF v_reminder IS NULL OR v_reminder.status != 'ACTIVE' THEN
+	-- If reminder doesn't exist or is not ACTIVE/DUE, return FALSE
+	IF v_reminder IS NULL OR v_reminder.status NOT IN ('ACTIVE', 'DUE') THEN
 		RETURN FALSE;
 	END IF;
 	
@@ -477,8 +483,8 @@ BEGIN
 	IF v_reminder.next_due_date IS NOT NULL THEN
 		v_days_until_date := (v_reminder.next_due_date - now()::date);
 		
-		-- If date is overdue or due within threshold, return TRUE
-		IF v_days_until_date <= p_days_threshold THEN
+		-- If date is overdue or due within 7 days, return TRUE
+		IF v_days_until_date <= 7 THEN
 			RETURN TRUE;
 		END IF;
 	END IF;
@@ -490,8 +496,8 @@ BEGIN
 			v_reminder.next_due_odometer_km
 		);
 		
-		-- If we have an estimate and it's within threshold, return TRUE
-		IF v_estimated_days_until_km IS NOT NULL AND v_estimated_days_until_km <= p_days_threshold THEN
+		-- If we have an estimate and it's within 7 days, return TRUE
+		IF v_estimated_days_until_km IS NOT NULL AND v_estimated_days_until_km <= 7 THEN
 			RETURN TRUE;
 		END IF;
 	END IF;

@@ -46,6 +46,14 @@ class VehicleService {
     await _apiClient.delete('/vehicles/$vehicleId');
   }
 
+  /// Get the latest odometer reading for a vehicle
+  Future<double> getLatestOdometer(String vehicleId) async {
+    final response = await _apiClient.get(
+      '/vehicles/$vehicleId/latest-odometer',
+    );
+    return (response['odometer_km'] as num?)?.toDouble() ?? 0.0;
+  }
+
   /// Add vehicle fuels configuration (POST - for new vehicles)
   Future<List<VehicleFuelConfig>> addVehicleFuels(
     String vehicleId,

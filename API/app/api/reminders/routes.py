@@ -112,7 +112,7 @@ def update_reminder(
     try:
         row = db.execute(
             text(
-                "SELECT * FROM car_app.fn_update_reminder_rule(:p_user_id, :p_rule_id, :p_name, :p_description, :p_category, :p_service_type, :p_is_recurring, :p_due_every_days, :p_due_every_km, :p_status, :p_auto_reset)"
+                "SELECT * FROM car_app.fn_update_reminder_rule(:p_user_id, :p_rule_id, :p_name, :p_description, :p_category, CAST(:p_service_type AS car_app.service_type), :p_is_recurring, :p_due_every_days, :p_due_every_km, CAST(:p_status AS car_app.reminder_status), :p_auto_reset)"
             ),
             params,
         ).mappings().first()
@@ -195,14 +195,12 @@ def estimate_days_until_km_reminder(
 @router.post("/reminders/{reminder_id}/check-due-soon")
 def check_reminder_due_soon(
     reminder_id: UUID,
-    days_threshold: int = 7,
     db: Session = Depends(get_db),
     current_user_id: UUID = Depends(get_current_user_id),
 ) -> dict:
     """
-    Check if a reminder is due soon (within days_threshold).
+    Check if an ACTIVE reminder should be marked as DUE (within 7 days).
     Considers both date-based and kilometer-based (estimated) reminders.
-    Use days_threshold=7 for DUE status, days_threshold=30 for upcoming reminders.
     """
     # First verify the user has access to this reminder
     reminder = db.execute(
@@ -222,15 +220,9 @@ def check_reminder_due_soon(
     try:
         result = db.execute(
             text("""
-                SELECT car_app.fn_is_reminder_due_soon(
-                    :reminder_id,
-                    :days_threshold
-                ) as is_due_soon
+                SELECT car_app.fn_is_reminder_due_soon(:reminder_id) as is_due_soon
             """),
-            {
-                "reminder_id": reminder_id,
-                "days_threshold": days_threshold,
-            },
+            {"reminder_id": reminder_id},
         ).mappings().first()
     except DBAPIError as exc:
         raise HTTPException(
@@ -243,7 +235,6 @@ def check_reminder_due_soon(
     return {
         "reminder_id": str(reminder_id),
         "is_due_soon": is_due_soon,
-        "days_threshold": days_threshold,
     }
 
 
