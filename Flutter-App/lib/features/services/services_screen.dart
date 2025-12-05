@@ -277,7 +277,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                 ),
                                 if (service.totalCost != null)
                                   Text(
-                                    '\$${service.totalCost!.toStringAsFixed(2)}',
+                                    '${service.totalCost!.toStringAsFixed(2)} PLN',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium

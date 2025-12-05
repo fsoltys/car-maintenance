@@ -818,7 +818,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Purchase Price',
                           hintText: 'e.g., 15000',
-                          prefixText: '\$ ',
+                          suffixText: ' PLN',
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,

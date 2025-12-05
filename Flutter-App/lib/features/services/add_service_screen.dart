@@ -593,7 +593,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                     borderSide: BorderSide.none,
                   ),
                   hintText: 'Optional',
-                  prefixText: '\$ ',
+                  suffixText: ' PLN',
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
@@ -726,7 +726,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                               if (item.quantity != null &&
                                   item.unitPrice != null)
                                 Text(
-                                  '${item.quantity} × \$${item.unitPrice!.toStringAsFixed(2)} = \$${item.totalPrice.toStringAsFixed(2)}',
+                                  '${item.quantity} × ${item.unitPrice!.toStringAsFixed(2)} PLN = ${item.totalPrice.toStringAsFixed(2)} PLN',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                             ],
@@ -912,7 +912,7 @@ class _ServiceItemDialogState extends State<_ServiceItemDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Unit Price',
                   hintText: 'e.g., 25.99',
-                  prefixText: '\$ ',
+                  suffixText: ' PLN',
                 ),
                 validator: (value) {
                   if (value != null && value.isNotEmpty) {

@@ -773,7 +773,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Purchase Price',
                           hintText: 'e.g., 15000',
-                          prefixText: '\$ ',
+                          suffixText: ' PLN',
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
