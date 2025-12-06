@@ -52,6 +52,7 @@ class _MyAppState extends State<MyApp> {
       navigatorKey: _navigatorKey,
       title: 'Car Maintenance',
       theme: AppTheme.darkTheme,
+      debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
     );
   }

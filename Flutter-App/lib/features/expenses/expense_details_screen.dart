@@ -149,6 +149,10 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  // Financial Metrics Card
+                  _buildMetricsCard(),
+                  const SizedBox(height: 16),
+
                   // Pie Chart Card
                   _buildPieChartCard(),
                   const SizedBox(height: 16),
@@ -158,6 +162,147 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildMetricsCard() {
+    final total = _summary?.totalAmount ?? 0.0;
+    final costPer100Km = _summary?.costPer100Km ?? 0.0;
+
+    // Calculate monthly average (assuming 12-month period)
+    final monthlyAverage = total / 12;
+
+    // Find largest expense
+    final largestExpense = _expenses.isNotEmpty
+        ? _expenses.map((e) => e.amount).reduce((a, b) => a > b ? a : b)
+        : 0.0;
+
+    // Calculate average expense amount
+    final averageExpense = _expenses.isNotEmpty
+        ? total / _expenses.length
+        : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Financial Overview',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Last 12 months',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 24),
+
+          // Grid of metrics
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 2.2,
+            children: [
+              _buildMetricItem(
+                'Total Expenses',
+                '${total.toStringAsFixed(2)} PLN',
+                Icons.account_balance_wallet,
+                AppColors.accentPrimary,
+              ),
+              _buildMetricItem(
+                'Monthly Average',
+                '${monthlyAverage.toStringAsFixed(2)} PLN',
+                Icons.calendar_today,
+                AppColors.accentSecondary,
+              ),
+              _buildMetricItem(
+                'Largest Expense',
+                '${largestExpense.toStringAsFixed(2)} PLN',
+                Icons.trending_up,
+                AppColors.error,
+              ),
+              _buildMetricItem(
+                'Average Expense',
+                '${averageExpense.toStringAsFixed(2)} PLN',
+                Icons.receipt,
+                AppColors.success,
+              ),
+              _buildMetricItem(
+                'Cost per 100km',
+                '${costPer100Km.toStringAsFixed(2)} PLN',
+                Icons.local_gas_station,
+                AppColors.warning,
+              ),
+              _buildMetricItem(
+                'Total Transactions',
+                '${_expenses.length}',
+                Icons.list_alt,
+                AppColors.accentPrimary,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bgMain,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 

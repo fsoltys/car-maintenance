@@ -19,7 +19,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
   final ServiceService _serviceService = ServiceService();
   final MetaService _metaService = MetaService();
   List<Service> _services = [];
+  List<Service> _allServices = [];
   Map<String, ServiceTypeEnum> _serviceTypesMap = {};
+  List<ServiceTypeEnum> _serviceTypes = [];
+  String? _selectedServiceType;
   bool _isLoading = true;
   String? _error;
 
@@ -38,6 +41,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     try {
       // Load service types from cache
       final serviceTypes = await _metaService.getServiceTypes();
+      _serviceTypes = serviceTypes;
       _serviceTypesMap = {for (var type in serviceTypes) type.value: type};
 
       // Load services
@@ -45,6 +49,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
         widget.vehicle.id,
       );
       setState(() {
+        _allServices = services;
         _services = services;
         _isLoading = false;
       });
@@ -62,7 +67,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
         widget.vehicle.id,
       );
       setState(() {
-        _services = services;
+        _allServices = services;
+        _filterServices(_selectedServiceType);
       });
     } catch (e) {
       if (mounted) {
@@ -74,6 +80,81 @@ class _ServicesScreenState extends State<ServicesScreen> {
         );
       }
     }
+  }
+
+  void _filterServices(String? serviceType) {
+    setState(() {
+      _selectedServiceType = serviceType;
+      if (serviceType == null) {
+        _services = _allServices;
+      } else {
+        _services = _allServices
+            .where((service) => service.serviceType == serviceType)
+            .toList();
+      }
+    });
+  }
+
+  void _showFilterOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bgSurface,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Filter by Category',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  ListTile(
+                    title: const Text('All Categories'),
+                    leading: Radio<String?>(
+                      value: null,
+                      groupValue: _selectedServiceType,
+                      onChanged: (value) {
+                        _filterServices(value);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    onTap: () {
+                      _filterServices(null);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  ..._serviceTypes.map((type) {
+                    return ListTile(
+                      title: Text(type.label),
+                      leading: Radio<String?>(
+                        value: type.value,
+                        groupValue: _selectedServiceType,
+                        onChanged: (value) {
+                          _filterServices(value);
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      onTap: () {
+                        _filterServices(type.value);
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _deleteService(String serviceId) async {
@@ -156,6 +237,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
           'Service History',
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.filter_list,
+              color: _selectedServiceType != null
+                  ? AppColors.accentPrimary
+                  : AppColors.textPrimary,
+            ),
+            onPressed: _showFilterOptions,
+            tooltip: 'Filter by Category',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -185,21 +278,31 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.build_circle,
+                    _selectedServiceType == null
+                        ? Icons.build_circle
+                        : Icons.filter_alt_off,
                     size: 64,
                     color: AppColors.textMuted,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No service records yet',
+                    _selectedServiceType == null
+                        ? 'No service records yet'
+                        : 'No services for this category',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppColors.textMuted,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Tap + to add your first service record',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                    child: Text(
+                      _selectedServiceType == null
+                          ? 'Tap + to add your first service record'
+                          : 'Clear the filter or add a new service in this category.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ],
               ),
@@ -248,7 +351,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         _getServiceTypeLabel(
@@ -258,8 +361,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                             .textTheme
                                             .titleMedium
                                             ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                       Text(
                                         DateFormat(
@@ -269,8 +372,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                             .textTheme
                                             .bodyMedium
                                             ?.copyWith(
-                                              color: AppColors.textMuted,
-                                            ),
+                                          color: AppColors.textMuted,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -282,9 +385,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                         .textTheme
                                         .titleMedium
                                         ?.copyWith(
-                                          color: AppColors.accentSecondary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                      color: AppColors.accentSecondary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                               ],
                             ),
@@ -347,21 +450,21 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ),
       floatingActionButton: widget.vehicle.userRole != 'VIEWER'
           ? FloatingActionButton(
-              backgroundColor: AppColors.accentPrimary,
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        AddServiceScreen(vehicle: widget.vehicle),
-                  ),
-                );
-                if (result == true) {
-                  _loadServices();
-                }
-              },
-              child: const Icon(Icons.add),
-            )
+        backgroundColor: AppColors.accentPrimary,
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  AddServiceScreen(vehicle: widget.vehicle),
+            ),
+          );
+          if (result == true) {
+            _loadServices();
+          }
+        },
+        child: const Icon(Icons.add),
+      )
           : null,
     );
   }
