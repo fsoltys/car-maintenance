@@ -633,13 +633,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               controller: _tankCapacityController,
                               decoration: InputDecoration(
                                 labelText:
-                                    _isDualTank &&
+                                    (_isDualTank &&
                                         _selectedFuels.length == 2 &&
                                         !_selectedFuels.any(
                                           (f) => f.fuel == 'EV',
                                         )
                                     ? 'Primary Tank Capacity (L)'
-                                    : 'Tank Capacity (L)',
+                                    : 'Tank Capacity (L)') + ' *',
                                 hintText: 'e.g., 50.0',
                               ),
                               keyboardType:
@@ -652,11 +652,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ],
                               validator: (value) {
-                                if (value != null && value.isNotEmpty) {
-                                  final capacity = double.tryParse(value);
-                                  if (capacity == null || capacity <= 0) {
-                                    return 'Enter a valid capacity';
-                                  }
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Tank capacity is required';
+                                }
+                                final capacity = double.tryParse(value);
+                                if (capacity == null || capacity <= 0) {
+                                  return 'Enter a valid capacity';
                                 }
                                 return null;
                               },
@@ -674,7 +675,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             TextFormField(
                               controller: _secondaryTankCapacityController,
                               decoration: const InputDecoration(
-                                labelText: 'Secondary Tank Capacity (L)',
+                                labelText: 'Secondary Tank Capacity (L) *',
                                 hintText: 'e.g., 40.0',
                               ),
                               keyboardType:
@@ -687,11 +688,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ],
                               validator: (value) {
-                                if (value != null && value.isNotEmpty) {
-                                  final capacity = double.tryParse(value);
-                                  if (capacity == null || capacity <= 0) {
-                                    return 'Enter a valid capacity';
-                                  }
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Secondary tank capacity is required';
+                                }
+                                final capacity = double.tryParse(value);
+                                if (capacity == null || capacity <= 0) {
+                                  return 'Enter a valid capacity';
                                 }
                                 return null;
                               },
@@ -707,7 +709,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             TextFormField(
                               controller: _batteryCapacityController,
                               decoration: const InputDecoration(
-                                labelText: 'Battery Capacity (kWh)',
+                                labelText: 'Battery Capacity (kWh) *',
                                 hintText: 'For electric vehicles',
                               ),
                               keyboardType:
@@ -720,11 +722,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ],
                               validator: (value) {
-                                if (value != null && value.isNotEmpty) {
-                                  final capacity = double.tryParse(value);
-                                  if (capacity == null || capacity <= 0) {
-                                    return 'Enter a valid capacity';
-                                  }
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Battery capacity is required for EVs';
+                                }
+                                final capacity = double.tryParse(value);
+                                if (capacity == null || capacity <= 0) {
+                                  return 'Enter a valid capacity';
                                 }
                                 return null;
                               },
@@ -737,7 +740,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       TextFormField(
                         controller: _initialOdometerController,
                         decoration: const InputDecoration(
-                          labelText: 'Current Odometer (km)',
+                          labelText: 'Current Odometer (km) *',
                           hintText: 'e.g., 50000',
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
@@ -749,11 +752,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           ),
                         ],
                         validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            final odometer = double.tryParse(value);
-                            if (odometer == null || odometer < 0) {
-                              return 'Enter a valid odometer reading';
-                            }
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Initial odometer reading is required';
+                          }
+                          final odometer = double.tryParse(value);
+                          if (odometer == null || odometer < 0) {
+                            return 'Enter a valid odometer reading';
                           }
                           return null;
                         },
